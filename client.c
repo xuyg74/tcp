@@ -1,17 +1,20 @@
-#include<stdio.h>
-#include<sys/types.h>
-#include<sys/socket.h>
-#include<unistd.h>
-#include<stdlib.h>
-#include<netinet/in.h>
-#include<arpa/inet.h>
-#include<string.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <string.h>
 
-#include<signal.h>
-#include<sys/ipc.h>
-#include<sys/shm.h>
+#include <signal.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include "signal_handle.h"
 #include "comm.h"
+
+#include<sys/wait.h>
+#include"sem_comm.h"
 
 extern void sig_proccess(int signo);
 extern void sig_pipe(int signo);
@@ -47,20 +50,26 @@ void proccess_conn_client(int s){
 void proccess_conn_client(int s){
     int shmid = getShm();
     char* mem = (char*)shmat(shmid, NULL, 0);
+
+    int semid = getSemSet();
 //    char buf[1024];
+    int j = 999;
 
     while(1)
     {
+        P(semid,0);
 //        ssize_t _s = read(0, mem, sizeof(mem));
 //        printf("shm length:%d\n", (int)strlen(mem));
-        int j = 999;
 //        memset(buf,'\0', sizeof(buf));
 //        memcpy(buf, mem, strlen(mem));
-        j = write(s, mem, strlen(mem));
-//        printf("j = %d, %s\n",j, mem);
-        printf("j = %d\n", j);
+        if(mem[0] == 0x01){
+            j = write(s, mem+1, strlen(mem)-1);
+            printf("j = %d\n", j);
+            mem[0] = 0x00;
+        }
 //        fflush(stdout);
-        usleep(100);
+//        usleep(100);
+        V(semid,0);
     }
     shmdt(mem);
 }

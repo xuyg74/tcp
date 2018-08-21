@@ -1,8 +1,8 @@
-#include<stdio.h>
-#include<sys/types.h>
-#include<sys/socket.h>
-#include<stdlib.h>
-#include<unistd.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -52,6 +52,8 @@ int main(int argc,const char* argv[])
     struct sockaddr_in remote;
     socklen_t len = sizeof(struct sockaddr_in);
 
+    printf("Parent is running.  pid:%d, ppid%d\n",getpid(),getppid());
+
     while(1)
     {
         int sock = accept(listen_sock, (struct sockaddr*)&remote, &len);
@@ -72,6 +74,7 @@ int main(int argc,const char* argv[])
         else if(id == 0)
         {//child
             printf("get a client, ip:%s, port:%d\n",inet_ntoa(remote.sin_addr),ntohs(remote.sin_port));
+            printf("Child is running.  pid:%d, ppid%d\n",getpid(),getppid());
 //            close(listen_sock);
             char buf[4096];
             while(1)
@@ -81,8 +84,8 @@ int main(int argc,const char* argv[])
                 if(_s > 0)
                 {
                     buf[_s] = 0;
-//                    printf("client:%s\n",buf);
-//                    fflush(stdout);
+                    printf("client:%s\n",buf);
+                    fflush(stdout);
                 }
                 else
                 {
