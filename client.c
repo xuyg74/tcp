@@ -48,9 +48,11 @@ void proccess_conn_client(int s){
 
 #if 1
 void proccess_conn_client(int s){
+    //Share Memory
     int shmid = getShm();
     char* mem = (char*)shmat(shmid, NULL, 0);
 
+    //Semphore
     int semid = getSemSet();
 //    char buf[1024];
     int j = 999;
@@ -64,7 +66,8 @@ void proccess_conn_client(int s){
 //        memcpy(buf, mem, strlen(mem));
         if(mem[0] == 0x01){
             j = write(s, mem+1, strlen(mem)-1);
-            printf("j = %d\n", j);
+            printf("length of mem = %d,j = %d\n", (int)strlen(mem),j);
+            fflush(stdout);
             mem[0] = 0x00;
         }
 //        fflush(stdout);

@@ -11,12 +11,14 @@
 
 int main()
 {
+	//Create Share Memory
 	int shmid = creatShm();
 	char* mem = (char*)shmat(shmid, NULL, 0);
 	if(NULL == mem){
 		printf("Failed to create SHM!\n");
-	} 
+	}
 
+	//Create Semphore
 	int semid = creatSemSet(1);
 	initSem(semid,0);
 	sleep(10);
@@ -48,7 +50,7 @@ int main()
 #endif
 
 #if 1
-//	int length = (int)strlen(mem);
+	//Open a file
 	char *filename = "/media/sf_share/exam/example";
 	int fp = open(filename,O_RDWR,S_IWUSR);
 	if(-1 == fp){
@@ -58,10 +60,11 @@ int main()
 	}
 
 	while(1){
-		usleep(1000);
+		usleep(10000);
 		P(semid,0);
 		if(mem[0] == 0x00){
-			int num_bytes = read(fp, mem+1, SIZE-2);
+			bzero(mem, SIZE);
+			int num_bytes = read(fp, mem+1, SIZE-8);  // Read the data from the file
 			if(num_bytes==0){
 				printf("The file %s has been finished.\n", filename);
 				close(fp);
@@ -75,10 +78,10 @@ int main()
 			} else {
 				printf("%d bytes has been read!\n", num_bytes);
 				fflush(stdout);
+				mem[0] = 0x1;
+				V(semid,0);
 			}
-			mem[0] = 0x1;
 		}
-		V(semid,0);
 	}
 
 #endif
