@@ -5,13 +5,11 @@ CC = gcc
 RM = rm
 CFLAGS=-Wall
 
-all:server_shm client server server_shm
+all:client_all server
 
-server_shm: server_shm.o comm.o sem_comm.o signal_handle.o
-	$(CC) $^ -o $@
 
-client: client.o signal_handle.o comm.o sem_comm.o
-	$(CC) $^ -o $@
+client_all: client_all.o comm.o sem_comm.o
+	$(CC) $^ -o $@ -lpthread
 
 server: server.o
 	$(CC) $^ -o $@
@@ -28,7 +26,7 @@ sem_comm.o: sem_comm.c
 signal_handle.o: signal_handle.c
 	$(CC) $(CFLAGS) -c $^ -o $@
 
-client.o: client.c
+client_all.o: client_all.c
 	$(CC) $(CFLAGS) -c $^ -o $@
 
 server.o: server.c
@@ -37,4 +35,4 @@ server.o: server.c
 
 .PHONY:clean
 clean:
-	$(RM) -f client server server_shm signal_handle.o client.o comm.o server_shm.o sem_comm.o server.o
+	$(RM) -f client_all server server_shm signal_handle.o client_all.o comm.o server_shm.o sem_comm.o server.o
