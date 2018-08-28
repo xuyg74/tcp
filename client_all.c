@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include<pthread.h>
+#include<time.h>
 
 #include<sys/wait.h>
 #include"sem_comm.h"
@@ -36,16 +37,19 @@ void proccess_conn_client(int s){
 
     //Semphore
     int semid = getSemSet();
+    printf("semid is %d", semid);
+    fflush(stdout);
 //    char buf[1024];
-    int j = 999;
+//    int j = 999;
 
     while(1)
     {
         P(semid,0);
         if(mem[0] == 0x01){
-            j = write(s, mem+1, strlen(mem)-1);
-            printf("length of mem = %d,j = %d\n", (int)strlen(mem),j);
-            fflush(stdout);
+            write(s, mem+1, strlen(mem)-1);
+//            j = write(s, mem+1, strlen(mem)-1);
+//            printf("length of mem = %d,j = %d\n", (int)strlen(mem),j);
+//            fflush(stdout);
             mem[0] = 0x00;
         }
 //        fflush(stdout);
@@ -83,6 +87,7 @@ void socket_handle(const char* argv[])
 }
 
 void file_handle(){
+    time_t time_1, time_2;
     int shmid = creatShm();
     char* mem = (char*)shmat(shmid, NULL, 0);
     if(NULL == mem){
@@ -91,6 +96,7 @@ void file_handle(){
 
     //Create Semphore
     int semid = creatSemSet(1);
+    printf("shmid is %d\n", semid);
     initSem(semid,0);
     sleep(3);
 
@@ -101,17 +107,19 @@ void file_handle(){
     if(-1 == fp){
         printf("The file %s can't be open.\n", filename);
     } else {
-        printf("The file %s has been open.\n", filename);
+        time_1 = time(NULL);
+        printf("The file %s has been open:%ld.\n", filename, time_1);
     }
 
     while(1){
-        usleep(1000);
+        usleep(500);
         P(semid,0);
         if(mem[0] == 0x00){
             bzero(mem, SIZE);
             int num_bytes = read(fp, mem+1, SIZE-8);  // Read the data from the file
             if(num_bytes==0){
-                printf("The file %s has been finished.\n", filename);
+                time_2 = time(NULL);
+                printf("The file %s has been finished:%ld.\n", filename, time_2);
                 close(fp);
                 V(semid,0);
                 break;
@@ -121,8 +129,8 @@ void file_handle(){
                 V(semid,0);
                 break;
             } else {
-                printf("%d bytes has been read!\n", num_bytes);
-                fflush(stdout);
+ //               printf("%d bytes has been read!\n", num_bytes);
+ //               fflush(stdout);
                 mem[0] = 0x1;
                 V(semid,0);
             }

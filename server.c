@@ -99,7 +99,7 @@ int main(int argc,const char* argv[])
             {
                 bzero(buf, sizeof(buf));
                 ssize_t _s = read(sock, buf, sizeof(buf));
-                printf("recvd num: %d\n", (int)_s);
+//                printf("recvd num: %d\n", (int)_s);
                 if(_s > 0)
                 {
 //                    buf[_s] = "\0";
@@ -113,7 +113,7 @@ int main(int argc,const char* argv[])
                         close(fp);
                         break;
                     } else {
-                        printf("aa!\n");
+//                        printf("aa!\n");
                         
                     }
 #if 0
