@@ -18,9 +18,9 @@
 
 #include<sys/wait.h>
 #include"sem_comm.h"
+#include"pcap_lib.h"
 
 static int sock;
-
 
 void sig_proccess_client(int signo){
     printf("Catch a exit signal\n");
@@ -33,11 +33,11 @@ void sig_proccess_client(int signo){
 void proccess_conn_client(int s){
     //Share Memory
     int shmid = getShm();
-    char* mem = (char*)shmat(shmid, NULL, 0);
+    struct shm_mem* mem = (struct shm_mem*)shmat(shmid, NULL, 0);
 
     //Semphore
     int semid = getSemSet();
-    printf("semid is %d", semid);
+    printf("proccess_conn_client begin: semid = %d, shmid = %d\n", semid, shmid);
     fflush(stdout);
 //    char buf[1024];
 //    int j = 999;
@@ -45,12 +45,12 @@ void proccess_conn_client(int s){
     while(1)
     {
         P(semid,0);
-        if(mem[0] == 0x01){
-            write(s, mem+1, strlen(mem)-1);
-//            j = write(s, mem+1, strlen(mem)-1);
-//            printf("length of mem = %d,j = %d\n", (int)strlen(mem),j);
+        if(mem->size != 0){
+//            write(s, mem+1, strlen(mem)-1);
+            int j = write(s, &(mem->content[0]), mem->size);
+            printf("length of mem = %d,j = %d\n", mem->size,j);
 //            fflush(stdout);
-            mem[0] = 0x00;
+            mem->size = 0;
         }
 //        fflush(stdout);
 //        usleep(100);
@@ -86,7 +86,14 @@ void socket_handle(const char* argv[])
     return;
 }
 
+/* Read the content from a file or a libpcap*/
 void file_handle(){
+    int shmid = getShm();
+    int semid = getSemSet();
+    pcap_lib(shmid, semid);
+
+
+#if 0  //Read the content from a file
     time_t time_1, time_2;
     int shmid = creatShm();
     char* mem = (char*)shmat(shmid, NULL, 0);
@@ -99,9 +106,6 @@ void file_handle(){
     printf("shmid is %d\n", semid);
     initSem(semid,0);
     sleep(3);
-
-#if 1
-    //Open a file
     char *filename = "/media/sf_share/exam/example";
     int fp = open(filename,O_RDWR,S_IWUSR);
     if(-1 == fp){
@@ -111,7 +115,7 @@ void file_handle(){
         printf("The file %s has been open:%ld.\n", filename, time_1);
     }
 
-    while(1){
+    while(1) {
         usleep(500);
         P(semid,0);
         if(mem[0] == 0x00){
@@ -137,9 +141,9 @@ void file_handle(){
         }
     }
 
-#endif
     shmdt(mem);
     destoryShm(shmid);
+#endif
     return;
 }
 
@@ -155,6 +159,21 @@ int main(int argc,const char* argv[])
 
     int ret_thrd1,ret_thrd2;
     void* retval;
+
+#if 1   //Read the content from the libpcap
+    int shmid = creatShm();
+    char* mem = (char*)shmat(shmid, NULL, 0);
+    if(NULL == mem){
+        printf("Failed to create SHM!\n");
+    } else {
+        printf("file_handle: length of mem: %ld\n", sizeof(mem));
+    }
+
+    //Create Semphore
+    int semid = creatSemSet(1);
+    printf("file_handle: semid is %d, shmid is %d\n", semid, shmid);
+    initSem(semid,0);
+#endif
 
     ret_thrd1 = pthread_create(&thread_1, NULL, (void *)&socket_handle, (void*)&argv[0]);
     ret_thrd2 = pthread_create(&thread_2, NULL, (void *)&file_handle, NULL);

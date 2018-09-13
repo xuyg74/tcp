@@ -88,7 +88,7 @@ int main(int argc,const char* argv[])
             printf("Child is running.  pid:%d, ppid%d\n",getpid(),getppid());
 //            close(listen_sock);
             char buf[SIZE];
-            char *filename = "/media/sf_share/exam/example_3";
+            char *filename = "/media/sf_share/exam/server";
             int fp = open(filename,FLAGS, MODE);
             if(-1 == fp){
                 printf("The file %s can't be open.\n", filename);
@@ -99,7 +99,7 @@ int main(int argc,const char* argv[])
             {
                 bzero(buf, sizeof(buf));
                 ssize_t _s = read(sock, buf, sizeof(buf));
-//                printf("recvd num: %d\n", (int)_s);
+                printf("recvd num: %d\n", (int)_s);
                 if(_s > 0)
                 {
 //                    buf[_s] = "\0";
@@ -113,7 +113,7 @@ int main(int argc,const char* argv[])
                         close(fp);
                         break;
                     } else {
-//                        printf("aa!\n");
+                        printf("write %d to files!\n", num_bytes);
                         
                     }
 #if 0
