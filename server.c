@@ -50,11 +50,49 @@ int startup(int _port,const char* _ip)
     return sock;
 }
 
+/* Functions to handle the data in the server node*/
+void server_handle(int sock){
+    char buf[SIZE];
+    char *filename = "/media/sf_share/exam/server";
+    int fp = open(filename,FLAGS, MODE);
+    int i = 0;
+    if(-1 == fp){
+        printf("The file %s can't be open.\n", filename);
+        return;
+    } else {
+        printf("The file %s has been open.\n", filename);
+    }
+    while(1) {
+        bzero(buf, sizeof(buf));
+        ssize_t _s = read(sock, buf, sizeof(buf));
+        printf("recvd num: %d\n", (int)_s);
+        if(_s > 0) {
+            int num_bytes = write(fp, buf, _s);
+            if( 0 == num_bytes){
+                printf("Finish the reading!\n");
+                close(fp);
+                break;
+            } else if(-1 == num_bytes){
+                printf("Error in write to the file. errno:%d\n", errno);
+                close(fp);
+                break;
+            } else {
+                i++;
+                printf("write %d to files!\n", i);                        
+            }
+        } else {
+            printf("client is quit!\n");
+            break;
+        }
+    }
+    return;
+}
+
 int main(int argc,const char* argv[])
 {
     if(argc != 3)
     {
-        printf("Usage:%s [loacl_ip] [loacl_port]\n",argv[0]);
+        printf("Usage:%s [local_ip] [local_port]\n",argv[0]);
         return 1;
     }
 
@@ -62,9 +100,7 @@ int main(int argc,const char* argv[])
 
     struct sockaddr_in remote;
     socklen_t len = sizeof(struct sockaddr_in);
-
     printf("Parent is running.  pid:%d, ppid%d\n",getpid(),getppid());
-
     while(1)
     {
         int sock = accept(listen_sock, (struct sockaddr*)&remote, &len);
@@ -76,58 +112,16 @@ int main(int argc,const char* argv[])
 
         //fork a child process for handling traffic while a connetion is established
         pid_t id = fork();
-        if(id > 0)
-        {//father
+        if(id > 0) {//father
             printf(">>>father process<<<");
             close(sock);
         //	while(waitpid(-1, NULL, WNOHANG) > 0);
-        }
-        else if(id == 0)
-        {//child
+        } 
+        else if(id == 0) {
+        //child
             printf("get a client, ip:%s, port:%d\n",inet_ntoa(remote.sin_addr),ntohs(remote.sin_port));
             printf("Child is running.  pid:%d, ppid%d\n",getpid(),getppid());
-//            close(listen_sock);
-            char buf[SIZE];
-            char *filename = "/media/sf_share/exam/server";
-            int fp = open(filename,FLAGS, MODE);
-            if(-1 == fp){
-                printf("The file %s can't be open.\n", filename);
-            } else {
-                printf("The file %s has been open.\n", filename);
-            }
-            while(1)
-            {
-                bzero(buf, sizeof(buf));
-                ssize_t _s = read(sock, buf, sizeof(buf));
-                printf("recvd num: %d\n", (int)_s);
-                if(_s > 0)
-                {
-//                    buf[_s] = "\0";
-                    int num_bytes = write(fp, buf, _s);
-                    if( 0 == num_bytes){
-                        printf("Finish the reading!\n");
-                        close(fp);
-                        break;
-                    } else if(-1 == num_bytes){
-                        printf("Error in write to the file. errno:%d\n", errno);
-                        close(fp);
-                        break;
-                    } else {
-                        printf("write %d to files!\n", num_bytes);
-                        
-                    }
-#if 0
-                    buf[_s] = 0;
-                    printf("client:%s\n",buf);
-                    fflush(stdout);
-#endif
-                }
-                else
-                {
-                    printf("client is quit!\n");
-                    break;
-                }
-            }
+            server_handle(sock);
             close(listen_sock);
             close(sock);
         }

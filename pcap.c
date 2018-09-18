@@ -17,12 +17,9 @@
   
 #define BUFSIZE 1514
 
-//定义flags:只写，文件不存在那么就创建，文件长度戳为0
-#define FLAGS O_WRONLY | O_CREAT | O_TRUNC
-//创建文件的权限，用户读、写、执行、组读、执行、其他用户读、执行
-#define MODE S_IRWXU | S_IXGRP | S_IROTH | S_IXOTH
-
-//static int cnt = 0;
+static int rec_pkt = 0;
+static int cnt_copy = 0;
+static int cnt_o = 0;
 
 #if 0  
 struct ether_header  
@@ -30,8 +27,7 @@ struct ether_header
     unsigned char ether_dhost[6];   //dst mac  
     unsigned char ether_shost[6];   //src mac  
     unsigned short ether_type;      //eth type  
-};  
-
+};
 
 int cont_str(const unsigned char *str){
     int i = 0;
@@ -46,7 +42,7 @@ void get_packet(unsigned char            *argument,
                 const struct pcap_pkthdr *packet_header,
                 const unsigned char      *packet_content)
 {
-#if 1
+
     /* declare pointers to packet headers */
 //    struct sniff_ethernet   *ethernet;        /* The ethernet header */
     struct sniff_ip         *ip;              /* The IP header       */
@@ -62,6 +58,7 @@ void get_packet(unsigned char            *argument,
     int                     proto_flag=2;// 0=TCP_FLAG; 1=UDP_FLAG
     int                     semid;
     int                     shmid;
+//    int                     fp;
 //    char*                   mem;
     struct shm_mem          *shm;
 #if 0
@@ -71,7 +68,7 @@ void get_packet(unsigned char            *argument,
 
 //    ethernet = (struct sniff_ethernet*)(packet_content);    
 
-    ip       = (struct sniff_ip*)(packet_content + SIZE_ETHERNET);
+    ip = (struct sniff_ip*)(packet_content + SIZE_ETHERNET);
 
     size_ip  = IP_HL(ip)*4;
     ip_length = ntohs(ip->ip_len);
@@ -84,69 +81,56 @@ void get_packet(unsigned char            *argument,
     struct user_parm  parm;
     if(argument != NULL){
         memcpy(&parm, argument, sizeof(parm));
+//        fp    = parm.fp;
         shmid = parm.shmid;
         semid = parm.semid;
         shm = (struct shm_mem*)shmat(shmid, NULL, 0);
-        printf("size_ip:%d, shmid:%d, semid: %d\n", ip_length, shmid, semid);
-        fflush(stdout);
+//        printf("size_ip:%d, shmid:%d, semid: %d\n", ip_length, shmid, semid);
+//        fflush(stdout);
     } else {
         printf("arguemnt is null!\n");
         return;
     }
-#if 0
-    ip_char = (char *)malloc(ip_length*sizeof(char));
-    ip_tmp = (char *)ip;
-    memset(ip_char, 0, ip_length*sizeof(char));
-    for(int i = 0; i < ip_length; i++){
-        *(ip_char+i) = *(ip_tmp+i) + '0';
-    }
-#endif
+
     switch(ip->ip_p) {
         case IPPROTO_TCP://useful
-            printf("   Protocol: TCP\n");
+//            printf("   Protocol: TCP\n");
             proto_flag=PROTOCOL_TCP;
             break;
  
-        case IPPROTO_UDP://useful
-            printf("   Protocol: UDP\n");
+        case IPPROTO_UDP://useless
+//            printf("   Protocol: UDP\n");
             proto_flag=PROTOCOL_UDP;
             return;
  
-        case IPPROTO_ICMP://useless
-            printf("   Protocol: ICMP\n");
+        case IPPROTO_ICMP://useful
+//            printf("   Protocol: ICMP\n");
+            rec_pkt++;
             proto_flag=PROTOCOL_ICMP;
+//            printf("rec_pkt: %d\n", rec_pkt);
+//            fflush(stdout);
             break;
  
         case IPPROTO_IP: //useless
-            printf("   Protocol: IP\n");
+//            printf("   Protocol: IP\n");
             proto_flag=PROTOCOL_IP;
             return;
  
         default:
-            printf("   Protocol: unknown\n");
+//            printf("   Protocol: unknown\n");
             proto_flag=PROTOCOL_OTHER;
             return;
     }
 
-#if 1
-    char *filename = "/media/sf_share/exam/pcap";
-    int fp = open(filename,FLAGS, MODE);
-    if(-1 == fp){
-        printf("The file %s can't be open.\n", filename);
-    } else {
-        printf("The file %s has been open.\n", filename);
-    }
-
+#if 0 //Save the received data into one file for verification
     int num_bytes = 0;
     num_bytes = write(fp, packet_content, ip_length+SIZE_ETHERNET);
     if(num_bytes == 0){
         printf("failed to write to files!\n");
-    } else {
-        close(fp);
     }
 #endif
 
-
+#if 1
     if (proto_flag == PROTOCOL_TCP) {
         tcp = (struct sniff_tcp *) (packet_content + SIZE_ETHERNET + size_ip);
         size_tcp = TH_OFF (tcp) * 4;
@@ -175,23 +159,22 @@ void get_packet(unsigned char            *argument,
         shm->size = size_payload;
         V(semid,0);
     } else if (proto_flag == PROTOCOL_ICMP) {
-        if(shm->size == 0) {
+        cnt_o++;
+//        printf("cnt_o:%d!\n", cnt_o);
+        if((shm->size + ip_length)< (SIZE-4)) {
             P(semid,0);
-#if 0            
-            char *ip_tmp = (char *)ip;
-            printf("   ICMP size: %d, ip size:%d\n", ip_length+SIZE_ETHERNET, cont_str(ip));
-            printf("   ip:%02x02%x02%x02%x02%x02%x02%x02%x%02x02%x02%x02%x02%x02%x02%x02%x%02x02%x02%x02%x02%x02%x02%x02%x%02x02%x02%x02%x02%x02%x02%x02%x\n", 
-                ip_tmp[0],ip_tmp[1],ip_tmp[2],ip_tmp[3],ip_tmp[4],ip_tmp[5],ip_tmp[6],ip_tmp[7],
-                ip_tmp[8],ip_tmp[9],ip_tmp[10],ip_tmp[11],ip_tmp[12],ip_tmp[13],ip_tmp[14],ip_tmp[15],
-                ip_tmp[16],ip_tmp[17],ip_tmp[18],ip_tmp[19],ip_tmp[20],ip_tmp[21],ip_tmp[22],ip_tmp[23],
-                ip_tmp[24],ip_tmp[25],ip_tmp[26],ip_tmp[27],ip_tmp[28],ip_tmp[29],ip_tmp[30],ip_tmp[31]);
-#endif
-            memcpy(&(shm->content[0]), packet_content, ip_length+SIZE_ETHERNET);
-            shm->size = ip_length+SIZE_ETHERNET;
+            memcpy(&(shm->content[shm->size]), packet_content, ip_length+SIZE_ETHERNET);
+            shm->size += ip_length+SIZE_ETHERNET;
             V(semid,0);
-            printf("if: shm->size is %d\n", shm->size);
+            cnt_copy++;
+            if(cnt_o != cnt_copy){
+                printf("rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", rec_pkt, cnt_o, cnt_copy);
+                fflush(stdout);
+            }
+//            printf("if: shm->size is %d\n", shm->size);
         } else {
             printf("else: shm->size is %d\n", shm->size);
+            fflush(stdout);
         }
     }
 //    free(ip_char);
@@ -237,7 +220,7 @@ void get_packet(unsigned char            *argument,
 }  
   
 //int main(int argc, char *argv[])
-int pcap_lib(int shmid, int semid)
+int pcap_lib(int shmid, int semid, int fp)
 {  
     char error_content[200];    //出错信息
     pcap_if_t *alldevs;
@@ -247,6 +230,7 @@ int pcap_lib(int shmid, int semid)
     struct user_parm  parm;
     parm.shmid = shmid;
     parm.semid = semid;
+    parm.fp    = fp;
       
     //Get the network interface
     if(pcap_findalldevs(&alldevs, error_content) == -1){
@@ -265,7 +249,6 @@ int pcap_lib(int shmid, int semid)
         printf("No interface found! Make sure libpcap is installed!\n");
     }
 
-#if 1
     if((pcap_handle = pcap_open_live(alldevs->name,BUFSIZE,1,0,error_content)) == NULL)  {
         printf("Can't open the first device %s,\nerror:%s!\n",alldevs->name, error_content);
         pcap_freealldevs(alldevs);
@@ -273,7 +256,6 @@ int pcap_lib(int shmid, int semid)
     } else {
         printf("device %s has been open!\n", alldevs->name);
     }
-#endif
 
     /* construct a filter */
     struct bpf_program filter_pgm;
@@ -281,12 +263,12 @@ int pcap_lib(int shmid, int semid)
     pcap_compile(pcap_handle, &filter_pgm, filter, 1, 0);
     pcap_setfilter(pcap_handle, &filter_pgm);
 
-#if 1
+    // Read and handle the packets from libpcap
     if(pcap_loop(pcap_handle,-1,get_packet,(u_char *)&parm) < 0)
     {  
         perror("pcap_loop");  
     }  
-#endif
+
     pcap_freealldevs(alldevs);
     pcap_close(pcap_handle);
     pcap_handle = NULL;

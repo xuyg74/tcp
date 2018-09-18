@@ -72,6 +72,7 @@ struct sniff_tcp {
 struct user_parm {
 	int  shmid;
 	int  semid;
+	int  fp;
 };
 
 struct shm_mem{
@@ -87,5 +88,5 @@ enum proto_flag {
 	PROTOCOL_OTHER
 };
 
-int pcap_lib(int shmid, int semid);
+int pcap_lib(int shmid, int semid, int fp);
 #endif
