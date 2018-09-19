@@ -8,13 +8,12 @@
 
 #define PATHNAME "."
 #define PROJID 0x6666
-#define SIZE 65536*2
+#define SIZE   65536*2
 
 int creatShm();
 int getShm();
 int Shmat();
 int Shmdt();
 int destoryShm(int shmid);
-
 
 #endif

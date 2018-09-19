@@ -8,7 +8,7 @@ CFLAGS=-Wall
 all:client_all server
 
 
-client_all: client_all.o comm.o sem_comm.o pcap.o
+client_all: client_all.o comm.o sem_comm.o pcap.o pthread_tools.o
 	$(CC) $^ -o $@ -lpthread -lpcap
 
 server: server.o
@@ -32,10 +32,12 @@ client_all.o: client_all.c
 server.o: server.c
 	$(CC) $(CFLAGS) -c $^ -o $@
 
-
 pcap.o: pcap.c
+	$(CC) $(CFLAGS) -c $^ -o $@
+
+pthread_tools.o: pthread_tools.c
 	$(CC) $(CFLAGS) -c $^ -o $@
 
 .PHONY:clean
 clean:
-	$(RM) -f client_all server server_shm signal_handle.o client_all.o comm.o server_shm.o sem_comm.o server.o pcap.o
+	$(RM) -f client_all server server_shm signal_handle.o client_all.o comm.o server_shm.o sem_comm.o server.o pcap.o pthread_tools.o

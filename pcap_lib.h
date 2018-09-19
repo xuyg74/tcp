@@ -7,6 +7,8 @@
 #define ETHER_ADDR_LEN        6
 #define TCP_FLAG              0
 #define UDP_FLAG              1
+#define INT_LENGTH            sizeof(int)
+#define CONTENT_LENGTH        (SIZE - INT_LENGTH)
 
 /* UDP header */
  struct sniff_udp
@@ -70,14 +72,14 @@ struct sniff_tcp {
 };
 
 struct user_parm {
-	int  shmid;
+	void *shmid;
 	int  semid;
 	int  fp;
 };
 
 struct shm_mem{
 	int size;
-	char content[SIZE-4];
+	char content[CONTENT_LENGTH];
 };
 
 enum proto_flag {

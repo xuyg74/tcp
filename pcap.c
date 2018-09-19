@@ -20,6 +20,7 @@
 static int rec_pkt = 0;
 static int cnt_copy = 0;
 static int cnt_o = 0;
+static int output = 1;
 
 #if 0  
 struct ether_header  
@@ -57,7 +58,7 @@ void get_packet(unsigned char            *argument,
     int                     size_payload;
     int                     proto_flag=2;// 0=TCP_FLAG; 1=UDP_FLAG
     int                     semid;
-    int                     shmid;
+//    int                     shmid;
 //    int                     fp;
 //    char*                   mem;
     struct shm_mem          *shm;
@@ -82,9 +83,9 @@ void get_packet(unsigned char            *argument,
     if(argument != NULL){
         memcpy(&parm, argument, sizeof(parm));
 //        fp    = parm.fp;
-        shmid = parm.shmid;
+//        shmid = parm.shmid;
         semid = parm.semid;
-        shm = (struct shm_mem*)shmat(shmid, NULL, 0);
+        shm = (struct shm_mem*)parm.shmid;
 //        printf("size_ip:%d, shmid:%d, semid: %d\n", ip_length, shmid, semid);
 //        fflush(stdout);
     } else {
@@ -161,20 +162,27 @@ void get_packet(unsigned char            *argument,
     } else if (proto_flag == PROTOCOL_ICMP) {
         cnt_o++;
 //        printf("cnt_o:%d!\n", cnt_o);
-        if((shm->size + ip_length)< (SIZE-4)) {
+        if((shm->size + ip_length)< CONTENT_LENGTH) {
             P(semid,0);
             memcpy(&(shm->content[shm->size]), packet_content, ip_length+SIZE_ETHERNET);
             shm->size += ip_length+SIZE_ETHERNET;
             V(semid,0);
             cnt_copy++;
-            if(cnt_o != cnt_copy){
+            if((cnt_o != cnt_copy)&&(output == 1)){
                 printf("rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", rec_pkt, cnt_o, cnt_copy);
                 fflush(stdout);
+                output = 0;
+            }
+            if((CONTENT_LENGTH - shm->size)<2500){
+                printf("usleep, rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", rec_pkt, cnt_o, cnt_copy);
+                fflush(stdout);
+                usleep(200);
             }
 //            printf("if: shm->size is %d\n", shm->size);
         } else {
-            printf("else: shm->size is %d\n", shm->size);
+            printf("else: shm->size is %d, rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", shm->size, rec_pkt, cnt_o, cnt_copy);
             fflush(stdout);
+            usleep(100);
         }
     }
 //    free(ip_char);
@@ -228,10 +236,10 @@ int pcap_lib(int shmid, int semid, int fp)
     int i = 0;
     pcap_t *pcap_handle;
     struct user_parm  parm;
-    parm.shmid = shmid;
+    parm.shmid = shmat(shmid, NULL, 0);
     parm.semid = semid;
     parm.fp    = fp;
-      
+
     //Get the network interface
     if(pcap_findalldevs(&alldevs, error_content) == -1){
         printf("Error in pcap_findalldevs \n");
