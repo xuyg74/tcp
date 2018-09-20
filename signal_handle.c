@@ -4,8 +4,9 @@
 #include<stdlib.h>
 
 #include<signal.h>
+#include "dbg.h"
 
 extern void sig_pipe(int signo){
-    printf("Catch a sig_pipe signal, signo = %d\n", signo);
+    DEBUG_INFO("Catch a sig_pipe signal, signo = %d\n", signo);
     _exit(0);
 }

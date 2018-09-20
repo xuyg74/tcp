@@ -8,6 +8,7 @@
 #include<sys/wait.h>
 #include"sem_comm.h"
 #include <errno.h>
+#include "dbg.h"
 
 int main()
 {
@@ -15,7 +16,7 @@ int main()
 	int shmid = creatShm();
 	char* mem = (char*)shmat(shmid, NULL, 0);
 	if(NULL == mem){
-		printf("Failed to create SHM!\n");
+		DEBUG_INFO("Failed to create SHM!\n");
 	}
 
 	//Create Semphore
@@ -54,9 +55,9 @@ int main()
 	char *filename = "/media/sf_share/exam/example";
 	int fp = open(filename,O_RDWR,S_IWUSR);
 	if(-1 == fp){
-		printf("The file %s can't be open.\n", filename);
+		DEBUG_INFO("The file %s can't be open.\n", filename);
 	} else {
-		printf("The file %s has been open.\n", filename);
+		DEBUG_INFO("The file %s has been open.\n", filename);
 	}
 
 	while(1){
@@ -66,17 +67,17 @@ int main()
 			bzero(mem, SIZE);
 			int num_bytes = read(fp, mem+1, SIZE-8);  // Read the data from the file
 			if(num_bytes==0){
-				printf("The file %s has been finished.\n", filename);
+				DEBUG_INFO("The file %s has been finished.\n", filename);
 				close(fp);
 				V(semid,0);
 				break;
 			}else if(num_bytes == -1){
-				printf("The file %s has error to be read. errno: %d!\n", filename, errno);
+				DEBUG_INFO("The file %s has error to be read. errno: %d!\n", filename, errno);
 				close(fp);
 				V(semid,0);
 				break;
 			} else {
-				printf("%d bytes has been read!\n", num_bytes);
+				DEBUG_INFO("%d bytes has been read!\n", num_bytes);
 				fflush(stdout);
 				mem[0] = 0x1;
 				V(semid,0);

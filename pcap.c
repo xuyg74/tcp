@@ -14,6 +14,7 @@
 
 #include "pcap_lib.h"
 #include "sem_comm.h"
+#include "dbg.h"
   
 #define BUFSIZE 1514
 
@@ -74,7 +75,7 @@ void get_packet(unsigned char            *argument,
     size_ip  = IP_HL(ip)*4;
     ip_length = ntohs(ip->ip_len);
     if (size_ip < 20) {
-        printf("   * Invalid IP header length: %u bytes\n", size_ip);
+        DEBUG_INFO("get_packet:   * Invalid IP header length: %u bytes\n", size_ip);
         fflush(stdout);
         return;
     }
@@ -86,39 +87,39 @@ void get_packet(unsigned char            *argument,
 //        shmid = parm.shmid;
         semid = parm.semid;
         shm = (struct shm_mem*)parm.shmid;
-//        printf("size_ip:%d, shmid:%d, semid: %d\n", ip_length, shmid, semid);
+//        DEBUG_INFO("size_ip:%d, shmid:%d, semid: %d\n", ip_length, shmid, semid);
 //        fflush(stdout);
     } else {
-        printf("arguemnt is null!\n");
+        DEBUG_INFO("arguemnt is null!\n");
         return;
     }
 
     switch(ip->ip_p) {
         case IPPROTO_TCP://useful
-//            printf("   Protocol: TCP\n");
+//            DEBUG_INFO("   Protocol: TCP\n");
             proto_flag=PROTOCOL_TCP;
             break;
  
         case IPPROTO_UDP://useless
-//            printf("   Protocol: UDP\n");
+//            DEBUG_INFO("   Protocol: UDP\n");
             proto_flag=PROTOCOL_UDP;
             return;
  
         case IPPROTO_ICMP://useful
-//            printf("   Protocol: ICMP\n");
+//            DEBUG_INFO("   Protocol: ICMP\n");
             rec_pkt++;
             proto_flag=PROTOCOL_ICMP;
-//            printf("rec_pkt: %d\n", rec_pkt);
+//            DEBUG_INFO("rec_pkt: %d\n", rec_pkt);
 //            fflush(stdout);
             break;
  
         case IPPROTO_IP: //useless
-//            printf("   Protocol: IP\n");
+//            DEBUG_INFO("   Protocol: IP\n");
             proto_flag=PROTOCOL_IP;
             return;
  
         default:
-//            printf("   Protocol: unknown\n");
+//            DEBUG_INFO("   Protocol: unknown\n");
             proto_flag=PROTOCOL_OTHER;
             return;
     }
@@ -127,7 +128,7 @@ void get_packet(unsigned char            *argument,
     int num_bytes = 0;
     num_bytes = write(fp, packet_content, ip_length+SIZE_ETHERNET);
     if(num_bytes == 0){
-        printf("failed to write to files!\n");
+        DEBUG_INFO("failed to write to files!\n");
     }
 #endif
 
@@ -136,32 +137,32 @@ void get_packet(unsigned char            *argument,
         tcp = (struct sniff_tcp *) (packet_content + SIZE_ETHERNET + size_ip);
         size_tcp = TH_OFF (tcp) * 4;
         if (size_tcp < 20) {
-            printf ("   * Invalid TCP header length: %u bytes\n", size_tcp);
+            DEBUG_INFO ("   * Invalid TCP header length: %u bytes\n", size_tcp);
             return;
         }
 
-        printf("   From: %s\n", inet_ntoa(ip->ip_src));
-        printf("   To: %s\n", inet_ntoa(ip->ip_dst));
-        printf("   Src port  : %d\n", ntohs (tcp->th_sport));
-        printf("   Dst port  : %d\n", ntohs (tcp->th_dport));
-        printf("   Seq number: %d\n", ntohl (tcp->th_seq));
+        DEBUG_INFO("   From: %s\n", inet_ntoa(ip->ip_src));
+        DEBUG_INFO("   To: %s\n", inet_ntoa(ip->ip_dst));
+        DEBUG_INFO("   Src port  : %d\n", ntohs (tcp->th_sport));
+        DEBUG_INFO("   Dst port  : %d\n", ntohs (tcp->th_dport));
+        DEBUG_INFO("   Seq number: %d\n", ntohl (tcp->th_seq));
         int fin=0;
         if(tcp->th_flags & TH_FIN) fin=1;
-        printf("   FIN       : %d\n", fin); 
+        DEBUG_INFO("   FIN       : %d\n", fin); 
  
         /* define/compute tcp payload (segment) offset */
         payload = (unsigned char *) (packet_content + SIZE_ETHERNET + size_ip + size_tcp);
  
         /* compute tcp payload (segment) size */
         size_payload = ntohs (ip->ip_len) - (size_ip + size_tcp);
-        printf("   TCP size_payload: %d\n", size_payload);
+        DEBUG_INFO("   TCP size_payload: %d\n", size_payload);
         P(semid,0);
         memcpy(&(shm->content[0]), payload, size_payload);
         shm->size = size_payload;
         V(semid,0);
     } else if (proto_flag == PROTOCOL_ICMP) {
         cnt_o++;
-//        printf("cnt_o:%d!\n", cnt_o);
+//        DEBUG_INFO("cnt_o:%d!\n", cnt_o);
         if((shm->size + ip_length)< CONTENT_LENGTH) {
             P(semid,0);
             memcpy(&(shm->content[shm->size]), packet_content, ip_length+SIZE_ETHERNET);
@@ -169,18 +170,18 @@ void get_packet(unsigned char            *argument,
             V(semid,0);
             cnt_copy++;
             if((cnt_o != cnt_copy)&&(output == 1)){
-                printf("rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", rec_pkt, cnt_o, cnt_copy);
+                DEBUG_INFO("rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", rec_pkt, cnt_o, cnt_copy);
                 fflush(stdout);
                 output = 0;
             }
             if((CONTENT_LENGTH - shm->size)<2500){
-                printf("usleep, rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", rec_pkt, cnt_o, cnt_copy);
+                DEBUG_INFO("usleep, rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", rec_pkt, cnt_o, cnt_copy);
                 fflush(stdout);
                 usleep(200);
             }
-//            printf("if: shm->size is %d\n", shm->size);
+//            DEBUG_INFO("if: shm->size is %d\n", shm->size);
         } else {
-            printf("else: shm->size is %d, rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", shm->size, rec_pkt, cnt_o, cnt_copy);
+            DEBUG_INFO("else: shm->size is %d, rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", shm->size, rec_pkt, cnt_o, cnt_copy);
             fflush(stdout);
             usleep(100);
         }
@@ -193,12 +194,12 @@ void get_packet(unsigned char            *argument,
     struct ether_header *ethernet_protocol;  
     unsigned short ethernet_type;           //以太网类型  
     cnt++;
-    printf("packet %d: --------------------------------------------\n", cnt);
-    printf("%s\n", ctime((time_t *)&(packet_header->ts.tv_sec))); //转换时间
+    DEBUG_INFO("packet %d: --------------------------------------------\n", cnt);
+    DEBUG_INFO("%s\n", ctime((time_t *)&(packet_header->ts.tv_sec))); //转换时间
     ethernet_protocol = (struct ether_header *)packet_content;
       
     mac_string = (unsigned char *)(ethernet_protocol->ether_shost);//获取源mac地址
-    printf("Mac Source Address is %02x:%02x:%02x:%02x:%02x:%02x\n",
+    DEBUG_INFO("Mac Source Address is %02x:%02x:%02x:%02x:%02x:%02x\n",
         *(mac_string+0),
         *(mac_string+1),
         *(mac_string+2),
@@ -206,7 +207,7 @@ void get_packet(unsigned char            *argument,
         *(mac_string+4),
         *(mac_string+5));
     mac_string = (unsigned char *)(ethernet_protocol->ether_dhost);//获取目的mac
-    printf("Mac Destination Address is %02x:%02x:%02x:%02x:%02x:%02x\n",
+    DEBUG_INFO("Mac Destination Address is %02x:%02x:%02x:%02x:%02x:%02x\n",
         *(mac_string+0),
         *(mac_string+1),
         *(mac_string+2),
@@ -215,12 +216,12 @@ void get_packet(unsigned char            *argument,
         *(mac_string+5));
 
     ethernet_type = ntohs(ethernet_protocol->ether_type);//获得以太网的类型
-    printf("Ethernet type is :%04x\n",ethernet_type);
+    DEBUG_INFO("Ethernet type is :%04x\n",ethernet_type);
     switch(ethernet_type)
     {  
-        case 0x0800:printf("The network layer is IP protocol\n\n\n");break;//ip
-        case 0x0806:printf("The network layer is ARP protocol\n\n\n");break;//arp
-        case 0x0835:printf("The network layer is RARP protocol\n\n\n");break;//rarp
+        case 0x0800:DEBUG_INFO("The network layer is IP protocol\n\n\n");break;//ip
+        case 0x0806:DEBUG_INFO("The network layer is ARP protocol\n\n\n");break;//arp
+        case 0x0835:DEBUG_INFO("The network layer is RARP protocol\n\n\n");break;//rarp
         default:break;
     }
     usleep(1000);
@@ -242,27 +243,27 @@ int pcap_lib(int shmid, int semid, int fp)
 
     //Get the network interface
     if(pcap_findalldevs(&alldevs, error_content) == -1){
-        printf("Error in pcap_findalldevs \n");
+        DEBUG_INFO("Error in pcap_findalldevs \n");
         return -1;
     }
 
     for(d = alldevs; d ; d=d->next){
         i++;
-        printf("name:%s\n", d->name);
+        DEBUG_INFO("name:%s\n", d->name);
         if(d->description){
-            printf("description: %s\n", d->description);
+            DEBUG_INFO("description: %s\n", d->description);
         }
     }
     if(i == 0){
-        printf("No interface found! Make sure libpcap is installed!\n");
+        DEBUG_INFO("No interface found! Make sure libpcap is installed!\n");
     }
 
     if((pcap_handle = pcap_open_live(alldevs->name,BUFSIZE,1,0,error_content)) == NULL)  {
-        printf("Can't open the first device %s,\nerror:%s!\n",alldevs->name, error_content);
+        DEBUG_INFO("Can't open the first device %s,\nerror:%s!\n",alldevs->name, error_content);
         pcap_freealldevs(alldevs);
         return -1;
     } else {
-        printf("device %s has been open!\n", alldevs->name);
+        DEBUG_INFO("device %s has been open!\n", alldevs->name);
     }
 
     /* construct a filter */

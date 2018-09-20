@@ -3,6 +3,7 @@
 #include <sched.h>
 #include <assert.h>
 #include <stdio.h>
+#include "dbg.h"
 
 int get_thread_policy( pthread_attr_t *attr )
 {
@@ -12,19 +13,19 @@ int get_thread_policy( pthread_attr_t *attr )
         switch ( policy )
         {
         case SCHED_FIFO:
-                printf("policy = SCHED_FIFO\n");
+                DEBUG_INFO("policy = SCHED_FIFO\n");
                 break;
 
         case SCHED_RR:
-                printf("policy = SCHED_RR\n");
+                DEBUG_INFO("policy = SCHED_RR\n");
                 break;
 
         case SCHED_OTHER:
-                printf("policy = SCHED_OTHER\n");
+                DEBUG_INFO("policy = SCHED_OTHER\n");
                 break;
 
         default:
-                printf("policy = UNKNOWN\n");
+                DEBUG_INFO("policy = UNKNOWN\n");
                 break;
         }
 
@@ -35,11 +36,11 @@ void show_thread_priority( pthread_attr_t *attr, int policy )
 {
         int priority = sched_get_priority_max( policy );
         assert( priority != -1 );
-        printf("max_priority = %d\n", priority);
+        DEBUG_INFO("max_priority = %d\n", priority);
 
         priority = sched_get_priority_min( policy );
         assert( priority != -1 );
-        printf("min_priority = %d\n", priority);
+        DEBUG_INFO("min_priority = %d\n", priority);
 }
 
 int get_thread_priority(pthread_attr_t *attr )
@@ -48,7 +49,7 @@ int get_thread_priority(pthread_attr_t *attr )
 
         int rs = pthread_attr_getschedparam(attr, &param );
         assert( rs == 0 );
-        printf("priority = %d\n", param.__sched_priority);
+        DEBUG_INFO("priority = %d\n", param.__sched_priority);
         return param.__sched_priority;
 }
 

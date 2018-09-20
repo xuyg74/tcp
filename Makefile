@@ -1,9 +1,16 @@
+ver = debug
+
+ifeq ($(ver), debug)
+	CFLAGS=-Wall -Ddebug
+else
+	CFLAGS=-Wall
+endif
+
 .PHONY:all
 
 //CC = /opt/fsl-networking/QorIQ-SDK-V1.6/sysroots/i686-fslsdk-linux/usr/bin/powerpc-fsl-linux/powerpc-fsl-linux-gcc
 CC = gcc
 RM = rm
-CFLAGS=-Wall
 
 all:client_all server
 

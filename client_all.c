@@ -25,6 +25,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <assert.h>
+#include "dbg.h"
 
 //定义flags:只写，文件不存在那么就创建，文件长度戳为0
 #define FLAGS O_WRONLY | O_CREAT | O_TRUNC
@@ -34,7 +35,7 @@
 static int sock;
 
 void sig_proccess_client(int signo){
-    printf("Catch a exit signal\n");
+//    DEBUG_INFO("Catch a exit signal\n");
     close(sock);
     exit (0);
 }
@@ -49,14 +50,14 @@ void proccess_conn_client(int s){
 
     //Get Semphore id
     int semid = getSemSet();
-    printf("proccess_conn_client begin: semid = %d, shmid = %d\n", semid, shmid);
+    DEBUG_INFO("proccess_conn_client begin: semid = %d, shmid = %d\n", semid, shmid);
     fflush(stdout);
 
     while(1) {
         P(semid,0);
         if(mem->size != 0) {
             j = write(s, &(mem->content[0]), mem->size);
-            if(j == 0) printf("error in write data to share memory!\n");
+            if(j == 0) DEBUG_INFO("error in write data to share memory!\n");
             mem->size = 0;
         }
         V(semid,0);
@@ -91,7 +92,7 @@ void tcp_sent(const char* argv[])
 {
     prctl(PR_SET_NAME,"client_tcp_sent1");
     if(connect_client(argv)!=0){
-        printf("Error in connect to client!\n");
+        DEBUG_INFO("Error in connect to client!\n");
         return;
     }
     proccess_conn_client(sock);
@@ -101,7 +102,7 @@ void tcp_sent(const char* argv[])
 
 /* Read the content from a file or a libpcap*/
 void file_handle(){
-    pthread_attr_t attr;
+//    pthread_attr_t attr;
 //    struct sched_param sched;
 //    int priority = get_thread_priority( &attr );
     prctl(PR_SET_NAME,"client_file_handle");
@@ -110,10 +111,10 @@ void file_handle(){
     char *filename = "/media/sf_share/exam/pcap";
     int fp = open(filename,FLAGS, MODE);
     if(-1 == fp){
-        printf("The file %s can't be open.\n", filename);
+        DEBUG_INFO("The file %s can't be open.\n", filename);
         return;
     } else {
-        printf("The file %s has been open.\n", filename);
+        DEBUG_INFO("The file %s has been open.\n", filename);
     }
     int shmid = getShm();
     int semid = getSemSet();
@@ -126,21 +127,21 @@ void file_handle(){
     int shmid = creatShm();
     char* mem = (char*)shmat(shmid, NULL, 0);
     if(NULL == mem){
-        printf("Failed to create SHM!\n");
+        DEBUG_INFO("Failed to create SHM!\n");
     }
 
     //Create Semphore
     int semid = creatSemSet(1);
-    printf("shmid is %d\n", semid);
+    DEBUG_INFO("shmid is %d\n", semid);
     initSem(semid,0);
     sleep(3);
     char *filename = "/media/sf_share/exam/example";
     int fp = open(filename,O_RDWR,S_IWUSR);
     if(-1 == fp){
-        printf("The file %s can't be open.\n", filename);
+        DEBUG_INFO("The file %s can't be open.\n", filename);
     } else {
         time_1 = time(NULL);
-        printf("The file %s has been open:%ld.\n", filename, time_1);
+        DEBUG_INFO("The file %s has been open:%ld.\n", filename, time_1);
     }
 
     while(1) {
@@ -151,17 +152,17 @@ void file_handle(){
             int num_bytes = read(fp, mem+1, SIZE-8);  // Read the data from the file
             if(num_bytes==0){
                 time_2 = time(NULL);
-                printf("The file %s has been finished:%ld.\n", filename, time_2);
+                DEBUG_INFO("The file %s has been finished:%ld.\n", filename, time_2);
                 close(fp);
                 V(semid,0);
                 break;
             }else if(num_bytes == -1){
-                printf("The file %s has error to be read. errno: %d!\n", filename, errno);
+                DEBUG_INFO("The file %s has error to be read. errno: %d!\n", filename, errno);
                 close(fp);
                 V(semid,0);
                 break;
             } else {
- //               printf("%d bytes has been read!\n", num_bytes);
+ //               DEBUG_INFO("%d bytes has been read!\n", num_bytes);
  //               fflush(stdout);
                 mem[0] = 0x1;
                 V(semid,0);
@@ -180,7 +181,7 @@ int main(int argc,const char* argv[])
 
     if(argc != 3)
     {
-        printf("Usage:%s [ip] [port]\n",argv[0]);
+        DEBUG_INFO("Usage:%s [ip] [port]\n",argv[0]);
         return 0;
     }
 
@@ -198,15 +199,15 @@ int main(int argc,const char* argv[])
     int shmid = creatShm();
     char* mem = (char*)shmat(shmid, NULL, 0);
     if(NULL == mem){
-        printf("Failed to create SHM!\n");
+        DEBUG_INFO("Failed to create SHM!\n");
     } else {
-        printf("Main: address of mem: %p\n", mem);
+        DEBUG_INFO("Main: address of mem: %p\n", mem);
     }
 
     //Create Semphore
     int semid = creatSemSet(1);
     initSem(semid,0);
-    printf("Client_all: semid is %d, shmid is %d\n", semid, shmid);
+    DEBUG_INFO("Client_all: semid is %d, shmid is %d\n", semid, shmid);
 
     int rs;
     rs = pthread_attr_init(&attr_Recv);
@@ -218,29 +219,29 @@ int main(int argc,const char* argv[])
     ret_thrd2 = pthread_create(&thd_Recv, &attr_Recv, (void *)&file_handle, NULL);  //Create thread for Recv
 
     if(ret_thrd1 != 0){
-        printf("Failed to create TCP_Socket Thread\n");
+        DEBUG_INFO("Failed to create TCP_Socket Thread\n");
     } else {
-        printf("Success to create TCP_Socket Thread\n");
+        DEBUG_INFO("Success to create TCP_Socket Thread\n");
     }
 
     if(ret_thrd2 != 0){
-        printf("Failed to create File_Handle thread\n");
+        DEBUG_INFO("Failed to create File_Handle thread\n");
     } else {
-        printf("Success to create File_Handle thread\n");
+        DEBUG_INFO("Success to create File_Handle thread\n");
     }
 
     int tmp1 = pthread_join(thd_Sent1, &retval);
-    printf("TCP_Socket thread return value(tmp) is %d\n", tmp1);
+    DEBUG_INFO("TCP_Socket thread return value(tmp) is %d\n", tmp1);
     if (tmp1 != 0) {
-        printf("cannot join with TCP_Socket thread\n");
+        DEBUG_INFO("cannot join with TCP_Socket thread\n");
     }
-    printf("TCP_Socket thread end\n");
+    DEBUG_INFO("TCP_Socket thread end\n");
 
     int tmp2 = pthread_join(thd_Recv, &retval);
-    printf("File_Handle thread return value(tmp) is %d\n", tmp2);
+    DEBUG_INFO("File_Handle thread return value(tmp) is %d\n", tmp2);
     if (tmp2 != 0) {
-        printf("cannot join with File_Handle thread\n");
+        DEBUG_INFO("cannot join with File_Handle thread\n");
     }
-    printf("File_Handle thread end\n");
+    DEBUG_INFO("File_Handle thread end\n");
     return 0;
 }

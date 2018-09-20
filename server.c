@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "comm.h"
+#include "dbg.h"
 
 //定义flags:只写，文件不存在那么就创建，文件长度戳为0
 #define FLAGS O_WRONLY | O_CREAT | O_TRUNC
@@ -55,33 +56,33 @@ void server_handle(int sock){
     char buf[SIZE];
     char *filename = "/media/sf_share/exam/server";
     int fp = open(filename,FLAGS, MODE);
-    int i = 0;
+//    int i = 0;
     if(-1 == fp){
-        printf("The file %s can't be open.\n", filename);
+        DEBUG_INFO("The file %s can't be open.\n", filename);
         return;
     } else {
-        printf("The file %s has been open.\n", filename);
+        DEBUG_INFO("The file %s has been open.\n", filename);
     }
     while(1) {
         bzero(buf, sizeof(buf));
         ssize_t _s = read(sock, buf, sizeof(buf));
-        printf("recvd num: %d\n", (int)_s);
+//        DEBUG_INFO("recvd num: %d\n", (int)_s);
         if(_s > 0) {
             int num_bytes = write(fp, buf, _s);
             if( 0 == num_bytes){
-                printf("Finish the reading!\n");
+                DEBUG_INFO("Finish the reading!\n");
                 close(fp);
                 break;
             } else if(-1 == num_bytes){
-                printf("Error in write to the file. errno:%d\n", errno);
+                DEBUG_INFO("Error in write to the file. errno:%d\n", errno);
                 close(fp);
                 break;
             } else {
-                i++;
-                printf("write %d to files!\n", i);                        
+//                i++;
+//                DEBUG_INFO("write %d to files!\n", i);                        
             }
         } else {
-            printf("client is quit!\n");
+            DEBUG_INFO("client is quit!\n");
             break;
         }
     }
@@ -92,7 +93,7 @@ int main(int argc,const char* argv[])
 {
     if(argc != 3)
     {
-        printf("Usage:%s [local_ip] [local_port]\n",argv[0]);
+        DEBUG_INFO("Usage:%s [local_ip] [local_port]\n",argv[0]);
         return 1;
     }
 
@@ -100,7 +101,7 @@ int main(int argc,const char* argv[])
 
     struct sockaddr_in remote;
     socklen_t len = sizeof(struct sockaddr_in);
-    printf("Parent is running.  pid:%d, ppid%d\n",getpid(),getppid());
+    DEBUG_INFO("Parent is running.  pid:%d, ppid%d\n",getpid(),getppid());
     while(1)
     {
         int sock = accept(listen_sock, (struct sockaddr*)&remote, &len);
@@ -113,14 +114,14 @@ int main(int argc,const char* argv[])
         //fork a child process for handling traffic while a connetion is established
         pid_t id = fork();
         if(id > 0) {//father
-            printf(">>>father process<<<");
+            DEBUG_INFO(">>>father process<<<");
             close(sock);
         //	while(waitpid(-1, NULL, WNOHANG) > 0);
         } 
         else if(id == 0) {
         //child
-            printf("get a client, ip:%s, port:%d\n",inet_ntoa(remote.sin_addr),ntohs(remote.sin_port));
-            printf("Child is running.  pid:%d, ppid%d\n",getpid(),getppid());
+            DEBUG_INFO("get a client, ip:%s, port:%d\n",inet_ntoa(remote.sin_addr),ntohs(remote.sin_port));
+            DEBUG_INFO("Child is running.  pid:%d, ppid%d\n",getpid(),getppid());
             server_handle(sock);
             close(listen_sock);
             close(sock);
