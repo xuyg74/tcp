@@ -8,7 +8,7 @@
 
 #define PATHNAME "."
 #define PROJID 0x6666
-#define SIZE   65536*2
+#define SIZE   0x200000
 
 int creatShm();
 int getShm();

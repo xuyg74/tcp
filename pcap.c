@@ -22,6 +22,7 @@ static int rec_pkt = 0;
 static int cnt_copy = 0;
 static int cnt_o = 0;
 static int output = 1;
+static int cnt    = 0;
 
 #if 0  
 struct ether_header  
@@ -74,11 +75,14 @@ void get_packet(unsigned char            *argument,
 
     size_ip  = IP_HL(ip)*4;
     ip_length = ntohs(ip->ip_len);
+
+#if 0    
     if (size_ip < 20) {
-        DEBUG_INFO("get_packet:   * Invalid IP header length: %u bytes\n", size_ip);
+        ERR_INFO("get_packet:   * Invalid IP header length: %u bytes\n", size_ip);
         fflush(stdout);
         return;
     }
+#endif
 
     struct user_parm  parm;
     if(argument != NULL){
@@ -90,36 +94,36 @@ void get_packet(unsigned char            *argument,
 //        DEBUG_INFO("size_ip:%d, shmid:%d, semid: %d\n", ip_length, shmid, semid);
 //        fflush(stdout);
     } else {
-        DEBUG_INFO("arguemnt is null!\n");
+        ERR_INFO("arguemnt is null!\n");
         return;
     }
 
     switch(ip->ip_p) {
         case IPPROTO_TCP://useful
-//            DEBUG_INFO("   Protocol: TCP\n");
+            DEBUG_INFO("   Protocol: TCP\n");
             proto_flag=PROTOCOL_TCP;
             break;
  
         case IPPROTO_UDP://useless
-//            DEBUG_INFO("   Protocol: UDP\n");
+            DEBUG_INFO("   Protocol: UDP\n");
             proto_flag=PROTOCOL_UDP;
             return;
  
         case IPPROTO_ICMP://useful
-//            DEBUG_INFO("   Protocol: ICMP\n");
+            DEBUG_INFO("   Protocol: ICMP\n");
             rec_pkt++;
             proto_flag=PROTOCOL_ICMP;
-//            DEBUG_INFO("rec_pkt: %d\n", rec_pkt);
-//            fflush(stdout);
+            DEBUG_INFO("rec_pkt: %d\n", rec_pkt);
+            fflush(stdout);
             break;
  
         case IPPROTO_IP: //useless
-//            DEBUG_INFO("   Protocol: IP\n");
+            DEBUG_INFO("   Protocol: IP\n");
             proto_flag=PROTOCOL_IP;
             return;
  
         default:
-//            DEBUG_INFO("   Protocol: unknown\n");
+            DEBUG_INFO("   Protocol: unknown\n");
             proto_flag=PROTOCOL_OTHER;
             return;
     }
@@ -162,7 +166,7 @@ void get_packet(unsigned char            *argument,
         V(semid,0);
     } else if (proto_flag == PROTOCOL_ICMP) {
         cnt_o++;
-//        DEBUG_INFO("cnt_o:%d!\n", cnt_o);
+        DEBUG_INFO("cnt_o:%d!\n", cnt_o);
         if((shm->size + ip_length)< CONTENT_LENGTH) {
             P(semid,0);
             memcpy(&(shm->content[shm->size]), packet_content, ip_length+SIZE_ETHERNET);
@@ -170,18 +174,20 @@ void get_packet(unsigned char            *argument,
             V(semid,0);
             cnt_copy++;
             if((cnt_o != cnt_copy)&&(output == 1)){
-                DEBUG_INFO("rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", rec_pkt, cnt_o, cnt_copy);
+                ERR_INFO("rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", rec_pkt, cnt_o, cnt_copy);
                 fflush(stdout);
                 output = 0;
+                usleep(200);
             }
-            if((CONTENT_LENGTH - shm->size)<2500){
-                DEBUG_INFO("usleep, rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", rec_pkt, cnt_o, cnt_copy);
+            if((CONTENT_LENGTH - shm->size)<0x10000){
+                cnt++;
+                ERR_INFO("%d usleep, rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", cnt, rec_pkt, cnt_o, cnt_copy);
                 fflush(stdout);
                 usleep(200);
             }
 //            DEBUG_INFO("if: shm->size is %d\n", shm->size);
         } else {
-            DEBUG_INFO("else: shm->size is %d, rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", shm->size, rec_pkt, cnt_o, cnt_copy);
+            ERR_INFO("else: shm->size is %d, rec_pkt: %d, cnt_o: %d, cnt_copy:%d!\n", shm->size, rec_pkt, cnt_o, cnt_copy);
             fflush(stdout);
             usleep(100);
         }
@@ -243,7 +249,7 @@ int pcap_lib(int shmid, int semid, int fp)
 
     //Get the network interface
     if(pcap_findalldevs(&alldevs, error_content) == -1){
-        DEBUG_INFO("Error in pcap_findalldevs \n");
+        ERR_INFO("Error in pcap_findalldevs \n");
         return -1;
     }
 
@@ -259,7 +265,7 @@ int pcap_lib(int shmid, int semid, int fp)
     }
 
     if((pcap_handle = pcap_open_live(alldevs->name,BUFSIZE,1,0,error_content)) == NULL)  {
-        DEBUG_INFO("Can't open the first device %s,\nerror:%s!\n",alldevs->name, error_content);
+        ERR_INFO("Can't open the first device %s,\nerror:%s!\n",alldevs->name, error_content);
         pcap_freealldevs(alldevs);
         return -1;
     } else {

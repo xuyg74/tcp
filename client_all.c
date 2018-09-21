@@ -57,7 +57,7 @@ void proccess_conn_client(int s){
         P(semid,0);
         if(mem->size != 0) {
             j = write(s, &(mem->content[0]), mem->size);
-            if(j == 0) DEBUG_INFO("error in write data to share memory!\n");
+            if(j == 0) ERR_INFO("error in write data to share memory!\n");
             mem->size = 0;
         }
         V(semid,0);
@@ -92,7 +92,7 @@ void tcp_sent(const char* argv[])
 {
     prctl(PR_SET_NAME,"client_tcp_sent1");
     if(connect_client(argv)!=0){
-        DEBUG_INFO("Error in connect to client!\n");
+        ERR_INFO("Error in connect to client!\n");
         return;
     }
     proccess_conn_client(sock);
@@ -111,7 +111,7 @@ void file_handle(){
     char *filename = "/media/sf_share/exam/pcap";
     int fp = open(filename,FLAGS, MODE);
     if(-1 == fp){
-        DEBUG_INFO("The file %s can't be open.\n", filename);
+        ERR_INFO("The file %s can't be open.\n", filename);
         return;
     } else {
         DEBUG_INFO("The file %s has been open.\n", filename);
@@ -181,7 +181,7 @@ int main(int argc,const char* argv[])
 
     if(argc != 3)
     {
-        DEBUG_INFO("Usage:%s [ip] [port]\n",argv[0]);
+        ERR_INFO("Usage:%s [ip] [port]\n",argv[0]);
         return 0;
     }
 
@@ -199,7 +199,7 @@ int main(int argc,const char* argv[])
     int shmid = creatShm();
     char* mem = (char*)shmat(shmid, NULL, 0);
     if(NULL == mem){
-        DEBUG_INFO("Failed to create SHM!\n");
+        ERR_INFO("Failed to create SHM!\n");
     } else {
         DEBUG_INFO("Main: address of mem: %p\n", mem);
     }
@@ -219,13 +219,13 @@ int main(int argc,const char* argv[])
     ret_thrd2 = pthread_create(&thd_Recv, &attr_Recv, (void *)&file_handle, NULL);  //Create thread for Recv
 
     if(ret_thrd1 != 0){
-        DEBUG_INFO("Failed to create TCP_Socket Thread\n");
+        ERR_INFO("Failed to create TCP_Socket Thread\n");
     } else {
         DEBUG_INFO("Success to create TCP_Socket Thread\n");
     }
 
     if(ret_thrd2 != 0){
-        DEBUG_INFO("Failed to create File_Handle thread\n");
+        ERR_INFO("Failed to create File_Handle thread\n");
     } else {
         DEBUG_INFO("Success to create File_Handle thread\n");
     }
@@ -233,14 +233,14 @@ int main(int argc,const char* argv[])
     int tmp1 = pthread_join(thd_Sent1, &retval);
     DEBUG_INFO("TCP_Socket thread return value(tmp) is %d\n", tmp1);
     if (tmp1 != 0) {
-        DEBUG_INFO("cannot join with TCP_Socket thread\n");
+        ERR_INFO("cannot join with TCP_Socket thread\n");
     }
     DEBUG_INFO("TCP_Socket thread end\n");
 
     int tmp2 = pthread_join(thd_Recv, &retval);
     DEBUG_INFO("File_Handle thread return value(tmp) is %d\n", tmp2);
     if (tmp2 != 0) {
-        DEBUG_INFO("cannot join with File_Handle thread\n");
+        ERR_INFO("cannot join with File_Handle thread\n");
     }
     DEBUG_INFO("File_Handle thread end\n");
     return 0;

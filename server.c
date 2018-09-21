@@ -58,7 +58,7 @@ void server_handle(int sock){
     int fp = open(filename,FLAGS, MODE);
 //    int i = 0;
     if(-1 == fp){
-        DEBUG_INFO("The file %s can't be open.\n", filename);
+        ERR_INFO("The file %s can't be open.\n", filename);
         return;
     } else {
         DEBUG_INFO("The file %s has been open.\n", filename);
@@ -74,7 +74,7 @@ void server_handle(int sock){
                 close(fp);
                 break;
             } else if(-1 == num_bytes){
-                DEBUG_INFO("Error in write to the file. errno:%d\n", errno);
+                ERR_INFO("Error in write to the file. errno:%d\n", errno);
                 close(fp);
                 break;
             } else {
@@ -82,7 +82,7 @@ void server_handle(int sock){
 //                DEBUG_INFO("write %d to files!\n", i);                        
             }
         } else {
-            DEBUG_INFO("client is quit!\n");
+            ERR_INFO("client is quit!\n");
             break;
         }
     }
@@ -93,7 +93,7 @@ int main(int argc,const char* argv[])
 {
     if(argc != 3)
     {
-        DEBUG_INFO("Usage:%s [local_ip] [local_port]\n",argv[0]);
+        ERR_INFO("Usage:%s [local_ip] [local_port]\n",argv[0]);
         return 1;
     }
 
@@ -101,7 +101,7 @@ int main(int argc,const char* argv[])
 
     struct sockaddr_in remote;
     socklen_t len = sizeof(struct sockaddr_in);
-    DEBUG_INFO("Parent is running.  pid:%d, ppid%d\n",getpid(),getppid());
+    OUT_INFO("Parent is running.  pid:%d, ppid%d\n",getpid(),getppid());
     while(1)
     {
         int sock = accept(listen_sock, (struct sockaddr*)&remote, &len);
@@ -120,8 +120,8 @@ int main(int argc,const char* argv[])
         } 
         else if(id == 0) {
         //child
-            DEBUG_INFO("get a client, ip:%s, port:%d\n",inet_ntoa(remote.sin_addr),ntohs(remote.sin_port));
-            DEBUG_INFO("Child is running.  pid:%d, ppid%d\n",getpid(),getppid());
+            OUT_INFO("get a client, ip:%s, port:%d\n",inet_ntoa(remote.sin_addr),ntohs(remote.sin_port));
+            OUT_INFO("Child is running.  pid:%d, ppid%d\n",getpid(),getppid());
             server_handle(sock);
             close(listen_sock);
             close(sock);
