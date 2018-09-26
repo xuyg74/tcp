@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include "readconf.h"
 #include "comm.h"
 #include "dbg.h"
 
@@ -23,7 +24,7 @@ int startup(int _port,const char* _ip)
     int sock = socket(AF_INET,SOCK_STREAM,0);
     if(sock < 0)
     {
-        perror("socket");
+        ERR_INFO("socket\n");
         exit(1);
     }
 
@@ -38,15 +39,17 @@ int startup(int _port,const char* _ip)
 
     if(bind(sock,(struct sockaddr*)&local , len) < 0)
     {
-        perror("bind");
+        ERR_INFO("bind\n");
         exit(2);
 }
 
     if(listen(sock, 5) < 0)
     {
-        perror("listen");
+        ERR_INFO("listen\n");
         exit(3);
     }
+
+    printf("Start succeed!\n");
 
     return sock;
 }
@@ -91,17 +94,55 @@ void server_handle(int sock){
 
 int main(int argc,const char* argv[])
 {
-    if(argc != 3)
+    TCP_CONF    conf;
+    memset(&conf, 0, sizeof(conf));
+    int socket_num;
+    int listen_sock[MAX_TCP_SENT];
+    struct sockaddr_in remote[MAX_TCP_SENT];
+    socklen_t len = sizeof(struct sockaddr_in);
+    int sock[MAX_TCP_SENT];
+
+    if(argc != 2)
     {
-        ERR_INFO("Usage:%s [local_ip] [local_port]\n",argv[0]);
+        ERR_INFO("Usage:%s /etc/network/server\n",argv[0]);
         return 1;
     }
 
-    int listen_sock = startup(atoi(argv[2]),argv[1]);
+    OUT_INFO("Parent is running.  pid:%d, ppid:%d\n",getpid(),getppid());
 
-    struct sockaddr_in remote;
-    socklen_t len = sizeof(struct sockaddr_in);
-    OUT_INFO("Parent is running.  pid:%d, ppid%d\n",getpid(),getppid());
+    readconfig(argv[1], &conf);
+    socket_num = conf.tcp_num;
+
+    for(int i = 0; i < socket_num; i++){
+        listen_sock[i] = startup(atoi(&(conf.port[i][0])),&(conf.ip_addr[i][0]));
+        while(1){
+            sock[i] = accept(listen_sock[i], (struct sockaddr*)&remote[i], &len);
+            if(sock[i]<0){
+                ERR_INFO("error in accept, i = %d\n", i);
+                continue;
+            }
+            pid_t id = fork();
+            if(id > 0){
+                DEBUG_INFO(">>>Farther Process<<<\n");
+                close(sock[i]);
+            } else if(id == 0){
+                OUT_INFO("get a client, ip:%s, port:%d\n",inet_ntoa(remote[i].sin_addr),ntohs(remote[i].sin_port));
+                OUT_INFO("Child is running.  pid:%d, ppid%d\n",getpid(),getppid());
+                server_handle(sock[i]);
+                close(listen_sock[i]);
+                close(sock[i]);
+            } else {
+                ERR_INFO("fork error, i = %d\n", i);
+                return 2;
+            }
+        }
+    }
+    return 0;
+}
+    
+#if 0
+//    struct sockaddr_in remote;
+//    socklen_t len = sizeof(struct sockaddr_in);
     while(1)
     {
         int sock = accept(listen_sock, (struct sockaddr*)&remote, &len);
@@ -134,3 +175,4 @@ int main(int argc,const char* argv[])
     }
     return 0;
 }
+#endif

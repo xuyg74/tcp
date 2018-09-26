@@ -26,17 +26,18 @@
 #include <sched.h>
 #include <assert.h>
 #include "dbg.h"
+#include "readconf.h"
 
 //定义flags:只写，文件不存在那么就创建，文件长度戳为0
 #define FLAGS O_WRONLY | O_CREAT | O_TRUNC
 //创建文件的权限，用户读、写、执行、组读、执行、其他用户读、执行
 #define MODE S_IRWXU | S_IXGRP | S_IROTH | S_IXOTH
 
-static int sock;
+static int sock[MAX_TCP_SENT];
 
 void sig_proccess_client(int signo){
 //    DEBUG_INFO("Catch a exit signal\n");
-    close(sock);
+    close(sock[0]);
     exit (0);
 }
 
@@ -66,8 +67,8 @@ void proccess_conn_client(int s){
     shmdt(mem);
 }
 
-int connect_client(const char* argv[]){
-    sock = socket(AF_INET,SOCK_STREAM, 0);
+int connect_client(TCP_PARM* argv){
+    sock[argv->serial] = socket(AF_INET,SOCK_STREAM, 0);
     if(sock < 0)
     {
         perror("socket");
@@ -76,11 +77,11 @@ int connect_client(const char* argv[]){
 
     struct sockaddr_in server;
     server.sin_family = AF_INET;
-    server.sin_port = htons(atoi(argv[2]));
-    server.sin_addr.s_addr = inet_addr(argv[1]);
+    server.sin_port = htons(atoi(&(argv->port[0])));
+    server.sin_addr.s_addr = inet_addr(&(argv->ip_addr[0]));
     socklen_t len = sizeof(struct sockaddr_in);
 
-    if(connect(sock, (struct sockaddr*)&server, len) < 0 )
+    if(connect(sock[argv->serial], (struct sockaddr*)&server, len) < 0 )
     {
         perror("connect");
         return 1;
@@ -88,15 +89,17 @@ int connect_client(const char* argv[]){
     return 0;
 }
 
-void tcp_sent(const char* argv[])
+void tcp_sent(TCP_PARM* argv)
 {
-    prctl(PR_SET_NAME,"client_tcp_sent1");
+    prctl(PR_SET_NAME,"client_tcp_socket1");
     if(connect_client(argv)!=0){
         ERR_INFO("Error in connect to client!\n");
         return;
+    } else {
+        DEBUG_INFO("TCP Socket connected!\n");
     }
-    proccess_conn_client(sock);
-    close(sock);
+    proccess_conn_client(sock[argv->serial]);
+    close(sock[argv->serial]);
     return;
 }
 
@@ -176,24 +179,24 @@ void file_handle(){
     return;
 }
 
-int main(int argc,const char* argv[])
+int main(int argc, const char* argv[])
 {
 
-    if(argc != 3)
+    if(argc != 2)
     {
-        ERR_INFO("Usage:%s [ip] [port]\n",argv[0]);
+        ERR_INFO("Usage:%s network_file\n",argv[0]);
         return 0;
     }
 
 /* Thread thd_Recv: Receive the data from libpcap
    Thread the_Sent1: Transfer the data to Server via TCP */
-    pthread_t thd_Sent1, thd_Recv;
-
-    pthread_attr_t attr_Recv, attr_Sent1;
-//    struct sched_param sched_Recv, sched_Sent1;
-
-    int ret_thrd1,ret_thrd2;
+    pthread_t thd_Sent[MAX_TCP_SENT], thd_Recv;
+    pthread_attr_t attr_Recv, attr_Sent[MAX_TCP_SENT];
+    int ret_thd_sent[MAX_TCP_SENT],ret_thrd2;
     void* retval;
+    int rs;
+    int tmp[MAX_TCP_SENT];
+    TCP_PARM  tcp_parm[MAX_TCP_SENT];
 
     //Create Share Memory
     int shmid = creatShm();
@@ -209,33 +212,45 @@ int main(int argc,const char* argv[])
     initSem(semid,0);
     DEBUG_INFO("Client_all: semid is %d, shmid is %d\n", semid, shmid);
 
-    int rs;
+    TCP_CONF    conf;
+    memset(&conf, 0, sizeof(conf));
+    readconfig(argv[1], &conf);
+
+    int socket_num = conf.tcp_num;
+
     rs = pthread_attr_init(&attr_Recv);
     assert( rs == 0 );
-    rs =  pthread_attr_init(&attr_Sent1);
-    assert( rs == 0 );
 
-    ret_thrd1 = pthread_create(&thd_Sent1, &attr_Sent1, (void *)&tcp_sent, (void*)&argv[0]); // Create thread for TCP_SOCK_1
-    ret_thrd2 = pthread_create(&thd_Recv, &attr_Recv, (void *)&file_handle, NULL);  //Create thread for Recv
-
-    if(ret_thrd1 != 0){
-        ERR_INFO("Failed to create TCP_Socket Thread\n");
-    } else {
-        DEBUG_INFO("Success to create TCP_Socket Thread\n");
+    for(int i = 0; i < socket_num; i++){
+        rs = pthread_attr_init(&attr_Sent[i]);
+        memcpy(&(tcp_parm[i].ip_addr[0]),&(conf.ip_addr[i][0]), 64*sizeof(char));
+        memcpy(&(tcp_parm[i].port[0]),&(conf.port[i][0]), 8*sizeof(char));
+        tcp_parm[i].serial = i;
+        assert(rs == 0);
+        ret_thd_sent[i] = pthread_create(&thd_Sent[i], &attr_Sent[i], (void *)&tcp_sent, (void*)&tcp_parm[i]);
+        if(ret_thd_sent[i] != 0){
+            ERR_INFO("Failed to create TCP_Socket Thread\n");
+        } else {
+            DEBUG_INFO("Success to create TCP_Socket Thread, i= %d\n", i);
+        }
     }
 
+    ret_thrd2 = pthread_create(&thd_Recv, &attr_Recv, (void *)&file_handle, NULL);  //Create thread for Recv
     if(ret_thrd2 != 0){
         ERR_INFO("Failed to create File_Handle thread\n");
     } else {
         DEBUG_INFO("Success to create File_Handle thread\n");
     }
 
-    int tmp1 = pthread_join(thd_Sent1, &retval);
-    DEBUG_INFO("TCP_Socket thread return value(tmp) is %d\n", tmp1);
-    if (tmp1 != 0) {
-        ERR_INFO("cannot join with TCP_Socket thread\n");
+    for(int i = 0; i < socket_num; i++){
+        tmp[i] = pthread_join(thd_Sent[i], &retval);
+        if (tmp[i] != 0) {
+            ERR_INFO("cannot join with TCP_Socket thread, return value:%d\n", tmp[i]);
+        } else {
+            DEBUG_INFO("TCP_Socket thread return value(tmp) is %d\n", tmp[i]);
+        }
+        DEBUG_INFO("TCP_Socket thread end, i = %d\n", i);
     }
-    DEBUG_INFO("TCP_Socket thread end\n");
 
     int tmp2 = pthread_join(thd_Recv, &retval);
     DEBUG_INFO("File_Handle thread return value(tmp) is %d\n", tmp2);
