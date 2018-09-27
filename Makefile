@@ -19,7 +19,7 @@ client_all: client_all.o comm.o sem_comm.o pcap.o pthread_tools.o readconf.o
 	$(CC) $^ -o $@ -lpthread -lpcap
 
 server: server.o readconf.o
-	$(CC) $^ -o $@
+	$(CC) $^ -o $@ -lpthread
 
 server_shm.o: server_shm.c
 	$(CC) $(CFLAGS) -c $^ -o $@

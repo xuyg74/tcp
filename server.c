@@ -6,6 +6,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <pthread.h>
+#include <assert.h>
+#include <sys/prctl.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -92,15 +95,57 @@ void server_handle(int sock){
     return;
 }
 
+void tcp_server(TCP_PARM* conf)
+{
+    struct sockaddr_in remote;
+    memset(&remote, 0, sizeof(remote));
+    socklen_t len = sizeof(struct sockaddr_in);
+
+    int listen_sock = startup(atoi(&(conf->port[0])),&(conf->ip_addr[0]));
+    int sock_srv;
+
+    prctl(PR_SET_NAME,"server_tcp_socket1");
+    while(1){
+        sock_srv = accept(listen_sock, (struct sockaddr*)&remote, &len);
+        if(sock_srv<0){
+            ERR_INFO("error in accept\n");
+            continue;
+        }
+        pid_t id = fork();
+        if(id > 0){
+            DEBUG_INFO(">>>Farther Process<<<\n");
+            close(sock_srv);
+        } else if(id == 0){
+            OUT_INFO("get a client, ip:%s, port:%d\n",inet_ntoa(remote.sin_addr),ntohs(remote.sin_port));
+            OUT_INFO("Child is running.  pid:%d, ppid%d\n",getpid(),getppid());
+            server_handle(sock_srv);
+            close(listen_sock);
+            close(sock_srv);
+            } else {
+                ERR_INFO("fork error\n");
+                return;
+            }
+        }
+    return;
+}
+
 int main(int argc,const char* argv[])
 {
-    TCP_CONF    conf;
+    TCP_CONF  conf;
+    TCP_PARM  server_conf[MAX_TCP_SENT];
     memset(&conf, 0, sizeof(conf));
+    memset(&server_conf, 0, sizeof(server_conf));
     int socket_num;
-    int listen_sock[MAX_TCP_SENT];
-    struct sockaddr_in remote[MAX_TCP_SENT];
-    socklen_t len = sizeof(struct sockaddr_in);
-    int sock[MAX_TCP_SENT];
+//    int listen_sock[MAX_TCP_SENT];
+//    struct sockaddr_in remote[MAX_TCP_SENT];
+//    socklen_t len = sizeof(struct sockaddr_in);
+//    int sock[MAX_TCP_SENT];
+    pthread_t thd_Sent[MAX_TCP_SENT];
+    pthread_attr_t attr_Sent[MAX_TCP_SENT];
+    int ret_thd_sent[MAX_TCP_SENT];
+    void* retval;
+    int rs;
+    int tmp[MAX_TCP_SENT];
 
     if(argc != 2)
     {
@@ -114,29 +159,31 @@ int main(int argc,const char* argv[])
     socket_num = conf.tcp_num;
 
     for(int i = 0; i < socket_num; i++){
-        listen_sock[i] = startup(atoi(&(conf.port[i][0])),&(conf.ip_addr[i][0]));
-        while(1){
-            sock[i] = accept(listen_sock[i], (struct sockaddr*)&remote[i], &len);
-            if(sock[i]<0){
-                ERR_INFO("error in accept, i = %d\n", i);
-                continue;
-            }
-            pid_t id = fork();
-            if(id > 0){
-                DEBUG_INFO(">>>Farther Process<<<\n");
-                close(sock[i]);
-            } else if(id == 0){
-                OUT_INFO("get a client, ip:%s, port:%d\n",inet_ntoa(remote[i].sin_addr),ntohs(remote[i].sin_port));
-                OUT_INFO("Child is running.  pid:%d, ppid%d\n",getpid(),getppid());
-                server_handle(sock[i]);
-                close(listen_sock[i]);
-                close(sock[i]);
-            } else {
-                ERR_INFO("fork error, i = %d\n", i);
-                return 2;
-            }
+        memcpy(&(server_conf[i].ip_addr[0]),&(conf.ip_addr[i][0]), 64*sizeof(char));
+        memcpy(&(server_conf[i].port[0]),&(conf.port[i][0]), 8*sizeof(char));
+        server_conf[i].serial = i;
+
+        rs = pthread_attr_init(&attr_Sent[i]);
+        assert(rs==0);
+
+        ret_thd_sent[i] = pthread_create(&thd_Sent[i], &attr_Sent[i], (void *)&tcp_server, (void*)&server_conf[i]);
+        if(ret_thd_sent[i] != 0){
+            ERR_INFO("Failed to create TCP_Socket Thread\n");
+        } else {
+            DEBUG_INFO("Success to create TCP_Socket Thread, i= %d\n", i);
         }
     }
+
+    for(int i = 0; i < socket_num; i++){
+        tmp[i] = pthread_join(thd_Sent[i], &retval);
+        if (tmp[i] != 0) {
+            ERR_INFO("cannot join with TCP_Socket thread, return value:%d\n", tmp[i]);
+        } else {
+            DEBUG_INFO("TCP_Socket thread return value(tmp) is %d\n", tmp[i]);
+        }
+        DEBUG_INFO("TCP_Socket thread end, i = %d\n", i);
+    }
+
     return 0;
 }
     

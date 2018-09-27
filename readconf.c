@@ -3,7 +3,7 @@
 #include "dbg.h"
 #include "readconf.h"
 
-int parseString(const char *origin, char *ipaddr, char *port){
+int parseString(char *origin, char *ipaddr, char *port){
 	if( NULL == origin){
 		ERR_INFO("origin is MULL!\n");
 		return 1;

@@ -12,8 +12,8 @@
 #include <sys/shm.h>
 #include <fcntl.h>
 #include <errno.h>
-#include<pthread.h>
-#include<time.h>
+#include <pthread.h>
+#include <time.h>
 #include <sys/prctl.h>
 
 #include<sys/wait.h>
@@ -22,7 +22,6 @@
 #include "comm.h"
 #include "pthread_tools.h"
 
-#include <pthread.h>
 #include <sched.h>
 #include <assert.h>
 #include "dbg.h"
@@ -223,10 +222,11 @@ int main(int argc, const char* argv[])
 
     for(int i = 0; i < socket_num; i++){
         rs = pthread_attr_init(&attr_Sent[i]);
+        assert(rs==0);
         memcpy(&(tcp_parm[i].ip_addr[0]),&(conf.ip_addr[i][0]), 64*sizeof(char));
         memcpy(&(tcp_parm[i].port[0]),&(conf.port[i][0]), 8*sizeof(char));
         tcp_parm[i].serial = i;
-        assert(rs == 0);
+
         ret_thd_sent[i] = pthread_create(&thd_Sent[i], &attr_Sent[i], (void *)&tcp_sent, (void*)&tcp_parm[i]);
         if(ret_thd_sent[i] != 0){
             ERR_INFO("Failed to create TCP_Socket Thread\n");

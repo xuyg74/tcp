@@ -264,17 +264,17 @@ int pcap_lib(int shmid, int semid, int fp)
         DEBUG_INFO("No interface found! Make sure libpcap is installed!\n");
     }
 
-    if((pcap_handle = pcap_open_live(alldevs->name,BUFSIZE,1,0,error_content)) == NULL)  {
+    if((pcap_handle = pcap_open_live("enp0s9",BUFSIZE,1,0,error_content)) == NULL)  {
         ERR_INFO("Can't open the first device %s,\nerror:%s!\n",alldevs->name, error_content);
         pcap_freealldevs(alldevs);
         return -1;
     } else {
-        DEBUG_INFO("device %s has been open!\n", alldevs->name);
+        DEBUG_INFO("device %s has been open!\n", "enp0s9");
     }
 
     /* construct a filter */
     struct bpf_program filter_pgm;
-    char *filter =  "ether dst 08:00:27:77:6e:51";
+    char *filter =  "dst host 192.168.2.4";
     pcap_compile(pcap_handle, &filter_pgm, filter, 1, 0);
     pcap_setfilter(pcap_handle, &filter_pgm);
 
