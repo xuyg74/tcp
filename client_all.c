@@ -93,7 +93,11 @@ int connect_client(TCP_PARM* argv){
 
 void tcp_sent(TCP_PARM* argv)
 {
-    prctl(PR_SET_NAME,"client_tcp_socket1");
+    char thread_name[20] = "tcp_socket";
+    char socket_num[10];
+    sprintf(socket_num, "%d", argv->serial);
+    strcat(thread_name, socket_num);
+    prctl(PR_SET_NAME,thread_name);
     if(connect_client(argv)!=0){
         ERR_INFO("Error in connect to client!\n");
         return;
@@ -110,7 +114,7 @@ void file_handle(){
 //    pthread_attr_t attr;
 //    struct sched_param sched;
 //    int priority = get_thread_priority( &attr );
-    prctl(PR_SET_NAME,"client_file_handle");
+    prctl(PR_SET_NAME,"file_handle");
 
 #if 1  //Read the content from libpcap
     char *filename = "/media/sf_share/exam/pcap";
