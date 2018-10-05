@@ -104,7 +104,12 @@ void tcp_server(TCP_PARM* conf)
     int listen_sock = startup(atoi(&(conf->port[0])),&(conf->ip_addr[0]));
     int sock_srv;
 
-    prctl(PR_SET_NAME,"server_tcp_socket1");
+    char thread_name[20] = "tcp_socket";
+    char socket_num[10];
+    sprintf(socket_num, "%d", conf->serial);
+    strcat(thread_name, socket_num);
+
+    prctl(PR_SET_NAME,thread_name);
     while(1){
         sock_srv = accept(listen_sock, (struct sockaddr*)&remote, &len);
         if(sock_srv<0){
@@ -155,7 +160,7 @@ int main(int argc,const char* argv[])
 
     OUT_INFO("Parent is running.  pid:%d, ppid:%d\n",getpid(),getppid());
 
-    readconfig(argv[1], &conf);
+    readconfig(argv[1], &conf);   //Read the IP config on the file and save them into parm conf
     socket_num = conf.tcp_num;
 
     for(int i = 0; i < socket_num; i++){

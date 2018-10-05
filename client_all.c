@@ -16,9 +16,9 @@
 #include <time.h>
 #include <sys/prctl.h>
 
-#include<sys/wait.h>
-#include"sem_comm.h"
-#include"pcap_lib.h"
+#include <sys/wait.h>
+#include "sem_comm.h"
+#include "pcap_lib.h"
 #include "comm.h"
 #include "pthread_tools.h"
 
@@ -33,6 +33,9 @@
 #define MODE S_IRWXU | S_IXGRP | S_IROTH | S_IXOTH
 
 static int sock[MAX_TCP_SENT];
+
+//static int cnt_file_handle = 0;
+//static int cnt_sent[MAX_TCP_SENT] = {0};
 
 void sig_proccess_client(int signo){
 //    DEBUG_INFO("Catch a exit signal\n");
