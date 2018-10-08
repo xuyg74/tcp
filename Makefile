@@ -15,10 +15,10 @@ RM = rm
 all:client_all server
 
 
-client_all: client_all.o comm.o sem_comm.o pcap.o pthread_tools.o readconf.o
+client_all: client_all.o comm.o sem_comm.o pcap.o pthread_tools.o readconf.o signal_handle.o
 	$(CC) $^ -o $@ -lpthread -lpcap
 
-server: server.o readconf.o
+server: server.o readconf.o comm.o sem_comm.o signal_handle.o
 	$(CC) $^ -o $@ -lpthread
 
 server_shm.o: server_shm.c

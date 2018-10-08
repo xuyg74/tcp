@@ -26,6 +26,7 @@
 #include <assert.h>
 #include "dbg.h"
 #include "readconf.h"
+#include "signal_handle.h"
 
 //定义flags:只写，文件不存在那么就创建，文件长度戳为0
 #define FLAGS O_WRONLY | O_CREAT | O_TRUNC
@@ -36,13 +37,30 @@ static int sock[MAX_TCP_SENT];
 
 //static int cnt_file_handle = 0;
 //static int cnt_sent[MAX_TCP_SENT] = {0};
-
+#if 0
 void sig_proccess_client(int signo){
-//    DEBUG_INFO("Catch a exit signal\n");
-    close(sock[0]);
+    int rc;
+    ERR_INFO("Catch a %d signal\n", signo);
+    int shmid = getShm();
+    struct shm_mem* mem = (struct shm_mem*)shmat(shmid, NULL, 0);
+    if(mem != NULL){
+        rc = destoryShm(shmid);
+        if (rc == 0){
+            DEBUG_INFO("Destroy share memory. SHMID is %d\n", shmid);
+        } else {
+            perror("SHM_DEL");
+        }
+    } else {
+        DEBUG_INFO("Share memory don't exist!\n");
+    }
+
+    int semid = getSemSet();
+    destorySemSet(semid);
+
+//    close(sock[0]);
     exit (0);
 }
-
+#endif
 
 void proccess_conn_client(int s){
 
@@ -196,6 +214,37 @@ int main(int argc, const char* argv[])
 
 /* Thread thd_Recv: Receive the data from libpcap
    Thread the_Sent1: Transfer the data to Server via TCP */
+
+    signal(SIGHUP, sig_proccess_client);
+    signal(SIGINT, sig_proccess_client);
+    signal(SIGQUIT, sig_proccess_client);
+    signal(SIGILL, sig_proccess_client);
+    signal(SIGTRAP, sig_proccess_client);
+    signal(SIGABRT, sig_proccess_client);
+    signal(SIGBUS, sig_proccess_client);
+    signal(SIGFPE, sig_proccess_client);
+    signal(SIGKILL, sig_proccess_client);
+    signal(SIGSEGV, sig_proccess_client);
+    signal(SIGPIPE, sig_proccess_client);
+    signal(SIGALRM, sig_proccess_client);
+    signal(SIGTERM, sig_proccess_client);
+    signal(SIGSTKFLT, sig_proccess_client);
+    signal(SIGCHLD, sig_proccess_client);
+    signal(SIGCONT, sig_proccess_client);
+    signal(SIGSTOP, sig_proccess_client);
+    signal(SIGTSTP, sig_proccess_client);
+    signal(SIGTTIN, sig_proccess_client);
+    signal(SIGTTOU, sig_proccess_client);
+    signal(SIGURG, sig_proccess_client);
+    signal(SIGXCPU, sig_proccess_client);
+    signal(SIGXFSZ, sig_proccess_client);
+    signal(SIGVTALRM, sig_proccess_client);
+    signal(SIGPROF, sig_proccess_client);
+    signal(SIGWINCH, sig_proccess_client);
+    signal(SIGIO, sig_proccess_client);
+    signal(SIGPWR, sig_proccess_client);
+    signal(SIGSYS, sig_proccess_client);
+
     pthread_t thd_Sent[MAX_TCP_SENT], thd_Recv;
     pthread_attr_t attr_Recv, attr_Sent[MAX_TCP_SENT];
     int ret_thd_sent[MAX_TCP_SENT],ret_thrd2;

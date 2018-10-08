@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <assert.h>
 #include <sys/prctl.h>
+#include <signal.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -16,12 +17,19 @@
 #include "readconf.h"
 #include "comm.h"
 #include "dbg.h"
+#include "signal_handle.h"
 
 //定义flags:只写，文件不存在那么就创建，文件长度戳为0
 #define FLAGS O_WRONLY | O_CREAT | O_TRUNC
 //创建文件的权限，用户读、写、执行、组读、执行、其他用户读、执行
 #define MODE S_IRWXU | S_IXGRP | S_IROTH | S_IXOTH
-
+#if 0
+void sig_proccess_client(int signo){
+    ERR_INFO("Catch a %d signal\n", signo);
+//    close(sock[0]);
+    exit (0);
+}
+#endif
 int startup(int _port,const char* _ip)
 {
     int sock = socket(AF_INET,SOCK_STREAM,0);
@@ -52,7 +60,7 @@ int startup(int _port,const char* _ip)
         exit(3);
     }
 
-    printf("Start succeed!\n");
+    DEBUG_INFO("Start succeed!\n");
 
     return sock;
 }
@@ -85,11 +93,12 @@ void server_handle(int sock){
                 break;
             } else {
 //                i++;
-//                DEBUG_INFO("write %d to files!\n", i);                        
+//                DEBUG_INFO("write %d to files!\n", i);
             }
         } else {
             ERR_INFO("client is quit!\n");
-            break;
+//            break;
+            return;
         }
     }
     return;
@@ -108,8 +117,8 @@ void tcp_server(TCP_PARM* conf)
     char socket_num[10];
     sprintf(socket_num, "%d", conf->serial);
     strcat(thread_name, socket_num);
-
     prctl(PR_SET_NAME,thread_name);
+
     while(1){
         sock_srv = accept(listen_sock, (struct sockaddr*)&remote, &len);
         if(sock_srv<0){
@@ -118,7 +127,7 @@ void tcp_server(TCP_PARM* conf)
         }
         pid_t id = fork();
         if(id > 0){
-            DEBUG_INFO(">>>Farther Process<<<\n");
+            DEBUG_INFO(">>>Farther Process-%d<<<\n", conf->serial);
             close(sock_srv);
         } else if(id == 0){
             OUT_INFO("get a client, ip:%s, port:%d\n",inet_ntoa(remote.sin_addr),ntohs(remote.sin_port));
@@ -138,6 +147,37 @@ int main(int argc,const char* argv[])
 {
     TCP_CONF  conf;
     TCP_PARM  server_conf[MAX_TCP_SENT];
+
+    signal(SIGHUP, sig_pipe);
+    signal(SIGINT, sig_pipe);
+    signal(SIGQUIT, sig_pipe);
+    signal(SIGILL, sig_pipe);
+    signal(SIGTRAP, sig_pipe);
+    signal(SIGABRT, sig_pipe);
+    signal(SIGBUS, sig_pipe);
+    signal(SIGFPE, sig_pipe);
+    signal(SIGKILL, sig_pipe);
+    signal(SIGSEGV, sig_pipe);
+    signal(SIGPIPE, sig_pipe);
+    signal(SIGALRM, sig_pipe);
+    signal(SIGTERM, sig_pipe);
+    signal(SIGSTKFLT, sig_pipe);
+    signal(SIGCHLD, sig_pipe);
+    signal(SIGCONT, sig_pipe);
+    signal(SIGSTOP, sig_pipe);
+    signal(SIGTSTP, sig_pipe);
+    signal(SIGTTIN, sig_pipe);
+    signal(SIGTTOU, sig_pipe);
+    signal(SIGURG, sig_pipe);
+    signal(SIGXCPU, sig_pipe);
+    signal(SIGXFSZ, sig_pipe);
+    signal(SIGVTALRM, sig_pipe);
+    signal(SIGPROF, sig_pipe);
+    signal(SIGWINCH, sig_pipe);
+    signal(SIGIO, sig_pipe);
+    signal(SIGPWR, sig_pipe);
+    signal(SIGSYS, sig_pipe);
+
     memset(&conf, 0, sizeof(conf));
     memset(&server_conf, 0, sizeof(server_conf));
     int socket_num;
@@ -173,7 +213,7 @@ int main(int argc,const char* argv[])
 
         ret_thd_sent[i] = pthread_create(&thd_Sent[i], &attr_Sent[i], (void *)&tcp_server, (void*)&server_conf[i]);
         if(ret_thd_sent[i] != 0){
-            ERR_INFO("Failed to create TCP_Socket Thread\n");
+            ERR_INFO("Failed to create TCP_Socket Thread, i = %d\n", i);
         } else {
             DEBUG_INFO("Success to create TCP_Socket Thread, i= %d\n", i);
         }
@@ -191,40 +231,3 @@ int main(int argc,const char* argv[])
 
     return 0;
 }
-    
-#if 0
-//    struct sockaddr_in remote;
-//    socklen_t len = sizeof(struct sockaddr_in);
-    while(1)
-    {
-        int sock = accept(listen_sock, (struct sockaddr*)&remote, &len);
-        if(sock < 0)
-        {
-            perror("accept");
-            continue;
-        }
-
-        //fork a child process for handling traffic while a connetion is established
-        pid_t id = fork();
-        if(id > 0) {//father
-            DEBUG_INFO(">>>father process<<<");
-            close(sock);
-        //	while(waitpid(-1, NULL, WNOHANG) > 0);
-        } 
-        else if(id == 0) {
-        //child
-            OUT_INFO("get a client, ip:%s, port:%d\n",inet_ntoa(remote.sin_addr),ntohs(remote.sin_port));
-            OUT_INFO("Child is running.  pid:%d, ppid%d\n",getpid(),getppid());
-            server_handle(sock);
-            close(listen_sock);
-            close(sock);
-        }
-        else
-        {
-            perror("fork");
-            return 2;
-        }
-    }
-    return 0;
-}
-#endif
