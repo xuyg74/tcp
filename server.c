@@ -23,13 +23,9 @@
 #define FLAGS O_WRONLY | O_CREAT | O_TRUNC
 //创建文件的权限，用户读、写、执行、组读、执行、其他用户读、执行
 #define MODE S_IRWXU | S_IXGRP | S_IROTH | S_IXOTH
-#if 0
-void sig_proccess_client(int signo){
-    ERR_INFO("Catch a %d signal\n", signo);
-//    close(sock[0]);
-    exit (0);
-}
-#endif
+
+extern long server_cnt;
+
 int startup(int _port,const char* _ip)
 {
     int sock = socket(AF_INET,SOCK_STREAM,0);
@@ -92,6 +88,7 @@ void server_handle(int sock){
                 close(fp);
                 break;
             } else {
+                server_cnt += _s;
 //                i++;
 //                DEBUG_INFO("write %d to files!\n", i);
             }
@@ -181,6 +178,7 @@ int main(int argc,const char* argv[])
     memset(&conf, 0, sizeof(conf));
     memset(&server_conf, 0, sizeof(server_conf));
     int socket_num;
+    server_cnt = 0;
 //    int listen_sock[MAX_TCP_SENT];
 //    struct sockaddr_in remote[MAX_TCP_SENT];
 //    socklen_t len = sizeof(struct sockaddr_in);

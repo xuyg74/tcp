@@ -1,6 +1,10 @@
 #ifndef _DBG_
 #define _DBG_
 
+long rcv_cnt;
+long sent_cnt;
+long server_cnt;
+
 #ifdef debug
 #define DEBUG_INFO(args...) printf(args)
 #else

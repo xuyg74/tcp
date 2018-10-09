@@ -8,12 +8,16 @@
 #include "sem_comm.h"
 #include "comm.h"
 
+extern long rcv_cnt;
+extern long sent_cnt;
+extern long server_cnt;
+
 extern void sig_pipe(int signo){
-    ERR_INFO("Catch a sig_pipe signal, signo = %d\n", signo);
+    OUT_INFO("Catch a sig_pipe signal, signo = %d, Received Bytes are %ld\n", signo, server_cnt);
     _exit(0);
 }
 
-void sig_proccess_client(int signo){
+extern void sig_proccess_client(int signo){
     int rc;
     ERR_INFO("Catch a %d signal\n", signo);
     int shmid = getShm();
@@ -31,6 +35,7 @@ void sig_proccess_client(int signo){
 
     int semid = getSemSet();
     destorySemSet(semid);
+    OUT_INFO("Received Bytes are %ld, Bytes sent are %ld\n", rcv_cnt, sent_cnt);
 
 //    close(sock[0]);
     exit (0);

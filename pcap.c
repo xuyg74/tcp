@@ -171,6 +171,7 @@ void get_packet(unsigned char            *argument,
             P(semid,0);
             memcpy(&(shm->content[shm->size]), packet_content, ip_length+SIZE_ETHERNET);
             shm->size += ip_length+SIZE_ETHERNET;
+            rcv_cnt += ip_length+SIZE_ETHERNET;
             V(semid,0);
             cnt_copy++;
             if((cnt_o != cnt_copy)&&(output == 1)){

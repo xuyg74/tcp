@@ -35,32 +35,11 @@
 
 static int sock[MAX_TCP_SENT];
 
+extern long rcv_cnt;
+extern long sent_cnt;
+
 //static int cnt_file_handle = 0;
 //static int cnt_sent[MAX_TCP_SENT] = {0};
-#if 0
-void sig_proccess_client(int signo){
-    int rc;
-    ERR_INFO("Catch a %d signal\n", signo);
-    int shmid = getShm();
-    struct shm_mem* mem = (struct shm_mem*)shmat(shmid, NULL, 0);
-    if(mem != NULL){
-        rc = destoryShm(shmid);
-        if (rc == 0){
-            DEBUG_INFO("Destroy share memory. SHMID is %d\n", shmid);
-        } else {
-            perror("SHM_DEL");
-        }
-    } else {
-        DEBUG_INFO("Share memory don't exist!\n");
-    }
-
-    int semid = getSemSet();
-    destorySemSet(semid);
-
-//    close(sock[0]);
-    exit (0);
-}
-#endif
 
 void proccess_conn_client(int s){
 
@@ -78,7 +57,11 @@ void proccess_conn_client(int s){
         P(semid,0);
         if(mem->size != 0) {
             j = write(s, &(mem->content[0]), mem->size);
-            if(j == 0) ERR_INFO("error in write data to share memory!\n");
+            if(j == 0) {
+                ERR_INFO("error in write data to share memory!\n");
+            } else {
+                sent_cnt += j;
+            }
             mem->size = 0;
         }
         V(semid,0);
@@ -252,6 +235,9 @@ int main(int argc, const char* argv[])
     int rs;
     int tmp[MAX_TCP_SENT];
     TCP_PARM  tcp_parm[MAX_TCP_SENT];
+
+    rcv_cnt = 0;
+    sent_cnt = 0;
 
     //Create Share Memory
     int shmid = creatShm();
