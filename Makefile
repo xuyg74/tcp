@@ -11,9 +11,10 @@ endif
 //CC = /opt/fsl-networking/QorIQ-SDK-V1.6/sysroots/i686-fslsdk-linux/usr/bin/powerpc-fsl-linux/powerpc-fsl-linux-gcc
 CC = gcc
 RM = rm
+OBJ_DIR = ./obj
+BIN_DIR = ./bin
 
-all:client_all server
-
+all:client_all server mymv
 
 client_all: client_all.o comm.o sem_comm.o pcap.o pthread_tools.o readconf.o signal_handle.o
 	$(CC) $^ -o $@ -lpthread -lpcap
@@ -50,4 +51,10 @@ readconf.o: readconf.c
 
 .PHONY:clean
 clean:
-	$(RM) -f client_all server server_shm signal_handle.o client_all.o comm.o server_shm.o sem_comm.o server.o pcap.o pthread_tools.o readconf.o
+	$(RM) -rf $(OBJ_DIR) $(BIN_DIR)
+
+mymv:
+	mkdir -p $(OBJ_DIR) $(BIN_DIR)
+	mv -f *.o $(OBJ_DIR)/
+	mv -f client_all $(BIN_DIR)/
+	mv -f server $(BIN_DIR)/
